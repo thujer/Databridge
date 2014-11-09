@@ -1,0 +1,41 @@
+[Project ID]
+Signature=UE Proj: v.1
+[Group]
+1=
+[Project Information]
+Project Directory=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\
+Use Relative Directory=0
+Relative to Project File=0
+Project Wordfile=
+Project Tagfile=
+Create Tagfile=0
+[Files]
+0=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\_main.c51
+1=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\hcom_drv.c51
+2=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\leds.c51
+3=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\synchcom.c51
+4=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\time.c51
+[Open Files]
+Open File0=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\time.c51
+Open File Pos0=0
+Open File Line0=0
+Open File Window Pos0=0,1,-1,-1,-4,-23,22,22,664,349
+Open File1=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\synchcom.c51
+Open File Pos1=3361
+Open File Line1=3119
+Open File Window Pos1=0,1,-1,-1,-4,-23,44,44,690,375
+Open File2=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\leds.c51
+Open File Pos2=0
+Open File Line2=0
+Open File Window Pos2=0,1,-1,-1,-4,-23,66,66,712,397
+Open File3=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\hcom_drv.c51
+Open File Pos3=0
+Open File Line3=0
+Open File Window Pos3=0,1,-1,-1,-4,-23,88,88,734,419
+Open File4=E:\PRGJAZ\_Prac\Databridge_1.04a_Halfduplex_ClearBridge\_main.c51
+Open File Pos4=1938
+Open File Line4=1912
+Active File Index=4
+Open File Window Pos4=2,3,-1,-1,-4,-23,110,110,756,441
+Open File5=
+Active File Display Mode=3

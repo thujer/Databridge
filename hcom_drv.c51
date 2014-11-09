@@ -1,0 +1,257 @@
+/////////////////////////////////////////////////////////////////////////////
+// ----------------------------------------------------------------------- //
+//              HWSERDRV - Hardware Serial Driver for x51                  //
+//             -------------------------------------------                 //
+//                         Version 2.28                                    //
+//               Writen by Thomas Hujer (c) 1999-2005                      //
+// ----------------------------------------------------------------------- //
+//  Driver for buffered, interrupt communication via RS232                 //
+//  Here is 2 buffers - for receive and for send data. Index of each       //
+//  buffer is rotating type. Each buffer have two indexs - first for       //
+//  write to buffer, second for read from buffer.                          //
+//                                                                         //
+//  Interrupt routine write receive data to HCOM_RECBUF and increment      //
+//  variable HCOM_RBIB, which mean the number of bytes in buffer and       //
+//  status of char in buffer means too.                                    //
+//  Sending process is directing by routine HCOM_PROC(). This routine is   //
+//  called from main loop each or few cycle. Routine wait for count-down   //
+//  variable HCOM_SDELAY, then read byte from HCOM_SNDBUF and write him    //
+//  to SBUF.                                                               //
+//                                                                         //
+// ----------------------------------------------------------------------- //
+//                                                                         //
+//  News> Version 2.25                                                     //
+//                     ----------------------------------------------      //
+//        Version 2.27 Added flags bHCOM_RB_Overflow, which signalize      //
+//                     overflow of Receive buffer. Reset this in main      //
+//                     function.                                           //
+//                     ----------------------------------------------      //
+//        Version 2.28 Added send/receive LED signalization                //
+//                                                                         //
+// ----------------------------------------------------------------------- //
+/////////////////////////////////////////////////////////////////////////////
+
+#include <REG52.H>
+#include "hcom_id.k"
+#include "leds.h"
+#include "leds.k"
+#include "time_def.k"
+#include "time.h"
+
+//#define DEBUG_MODE
+
+#ifdef DEBUG_MODE
+#include "leds.h"
+#endif
+
+#define uchar unsigned char
+#define uint unsigned int
+
+/*-------------------------------------------------------------------------*/
+#define cRECBUFSIZE 64
+#define cSNDBUFSIZE 32
+#define cSDELAY     50
+
+/*-------------------------------------------------------------------------*/
+uchar xdata  HCOM_RECBUF[cRECBUFSIZE];
+uchar data   HCOM_RW_IX;
+uchar data   HCOM_RR_IX;
+uchar data   HCOM_RBIB;
+uchar data   HCOM_RByte;
+bit          bHCOM_RIBUF;
+bit          bHCOM_RB_Overflow;   // Flag preteceni prijimaciho bufferu
+
+/*-------------------------------------------------------------------------*/
+uchar xdata  HCOM_SNDBUF[cSNDBUFSIZE];
+uchar data   HCOM_SW_IX;
+uchar data   HCOM_SR_IX;
+uchar data   HCOM_SBIB;
+uchar data   HCOM_SDELAY;
+bit          bHCOM_StartSend;
+bit          bHCOM_SB_Overflow;   // Flag preteceni vysilaciho bufferu
+
+bit          bHCOM_PtrDataSend;   // Flag pro vysilani dat z pointeru
+uchar* xdata HCOM_DataPtr;        // Pointer
+uchar  xdata HCOM_MaxIndex;       // Maximum znaku na pointeru
+uchar  xdata HCOM_PtrCharCount;   // Index na pointeru
+
+// ======================================================================= //
+//             Interrupt - Zapis prichoziho znaku do recbuf                //
+// ----------------------------------------------------------------------- //
+#pragma NOAREGS
+void SerialInterrupt() interrupt 4
+{
+  if(RI)                                    // Pokud prijaty znak
+  { if(HCOM_RBIB < cRECBUFSIZE)             // Pokud neni RBUF plny
+    { LED_Stay(cLED_RD_HCOM);               // Signalizuj prijem
+      RI=0;                                 // Reset priznaku
+      #ifdef DEBUG_MODE
+      LED2=~LED2;
+      #endif
+      HCOM_RW_IX%=cRECBUFSIZE;              // Pretoc index, je-li na max.
+      HCOM_RECBUF[HCOM_RW_IX]=SBUF;         // Nacti znak z 232
+      HCOM_RW_IX++;                         // Posun index
+      HCOM_RBIB++;                          // Zvys pocet znaku v RBUF
+    } else bHCOM_RB_Overflow=1;             // Nastav flag preteceni bufferu
+  }
+
+  if(HCOM_SBIB)                           // Pokud je znak v SndBuf
+  { if(TI)
+    { LED_Stay(cLED_WR_HCOM);             // Signalizuj vysilani
+      TI=0;
+      bHCOM_StartSend=0;
+      #ifdef DEBUG_MODE
+      LED5=~LED5;
+      #endif
+      HCOM_SR_IX%=cSNDBUFSIZE;            // Pripadne pretoc index
+      SBUF=HCOM_SNDBUF[HCOM_SR_IX];       // Odesli znak z sndbuf
+      HCOM_SR_IX++;                       // Posun index
+      HCOM_SBIB--;                        // Sniz pocet znaku v sndbuf
+    }
+  } else TI=0;                            // Pokud v SBUF neni znak, nuluj TI
+}
+#pragma AREGS
+
+
+
+// Spusteni odpocitavani do nastaveni priznaku pro vysilani
+void HCOM_StartSend()
+{ HCOM_SDELAY=cSDELAY;
+  bHCOM_StartSend=1;
+}
+
+
+// Spusteni serioveho vysilani se zablokovanym prerusenim
+void HCOM_Start_NI_TXD()
+{ LED_Stay(cLED_WR_HCOM);             // Signalizuj vysilani
+  HCOM_StartSend();
+  ES=0; TI=1;
+}
+
+// Konec serioveho vysilani se zablokovanym prerusenim
+void HCOM_End_NI_TXD()
+{ Timeout_Set(cHCOM_IntUp,5); while(~TI) { if(Timeout(cHCOM_IntUp)) break; }
+  Timeout_Set(cHCOM_IntUp,5); while(TI) { if(Timeout(cHCOM_IntUp)) break; }
+  bHCOM_RIBUF=0;
+  HCOM_RW_IX=0;
+  HCOM_RR_IX=0;
+  HCOM_RBIB=0;
+  HCOM_RByte=0;
+  HCOM_SW_IX=0;
+  HCOM_SR_IX=0;
+  HCOM_SBIB=0;
+  TI=0;
+  ES=1;
+}
+
+// Vyzvednuti znaku z recbuf
+void HCOM_PROC()
+{ if(HCOM_RBIB)                           // Pokud je v RBUF znak
+  { bHCOM_RIBUF=1;
+    HCOM_RR_IX%=cRECBUFSIZE;              // Pripadne pretoc index
+    HCOM_RByte=HCOM_RECBUF[HCOM_RR_IX];   // Nacti znak z rbuf
+    HCOM_RR_IX++;                         // Posun index
+    HCOM_RBIB--;                          // Sniz pocet znaku v rbuf
+    #ifdef DEBUG_MODE
+    LED4=~LED4;
+    #endif
+  } else bHCOM_RIBUF=0;
+
+  if(bHCOM_StartSend)                     // Zacatek prenosu fronty
+  { HCOM_SDELAY--;
+    if(!HCOM_SDELAY) TI=1;
+  }
+
+  if((!HCOM_SBIB) && (TI) && (!HCOM_SDELAY)) TI=0; // Konec prenosu fronty
+
+  // Vysilani dat z pointeru
+  if(bHCOM_PtrDataSend)
+  { LED_Stay(cLED_WR_HCOM);
+    if((*HCOM_DataPtr) && (HCOM_PtrCharCount < HCOM_MaxIndex))
+    { if(HCOM_SBIB < (cSNDBUFSIZE-1)) // Pokud je v SBUF volno...
+      { HCOM_SW_IX%=cSNDBUFSIZE;       // Pretoc index, je-li na konci
+        HCOM_SNDBUF[HCOM_SW_IX]=(*HCOM_DataPtr); // Zapis znak do sndbuf
+        HCOM_SW_IX++;                  // Posun index
+        if((!HCOM_SBIB) && (~TI)) HCOM_StartSend();
+        HCOM_SBIB++;                   // Zvys pocet znaku v sndbuf
+        HCOM_DataPtr++;                // Posun pointer
+        HCOM_PtrCharCount++;               // Posun pocitadlo znaku
+      }
+    }
+    else bHCOM_PtrDataSend=0; // Konec vysilani
+  }
+}
+
+
+// Spusteni odesilani dat z pointeru
+bit HCOM_SendPtr(uchar *Ptr, uchar MaxIndex)
+{ if(~bHCOM_PtrDataSend)
+  { HCOM_DataPtr=Ptr;          // Zkopiruj pointer
+    HCOM_MaxIndex=MaxIndex;    // Zkopiruj maximalni pocet znaku
+    HCOM_PtrCharCount=0;       // Nuluj pocitadlo znaku
+    bHCOM_PtrDataSend=1;
+    return(1);
+  }
+  else return(0);
+}
+
+
+// Zapis znaku do vysilaci fronty
+bit HCOM_WriteChar(uchar Ch)
+{ if(HCOM_SBIB < (cSNDBUFSIZE-1))
+  { HCOM_SW_IX%=cSNDBUFSIZE;       // Pretoc index, je-li na max
+    HCOM_SNDBUF[HCOM_SW_IX]=Ch;    // Zapis znak do sndbuf
+    HCOM_SW_IX++;                  // Posun index
+    if((!HCOM_SBIB) && (~TI)) HCOM_StartSend();
+    HCOM_SBIB++;                   // Zvys pocet znaku v sndbuf
+    return(1);
+  }
+  else
+  { bHCOM_SB_Overflow=1;             // Nastav flag preteceni bufferu
+    return(0);
+  }
+}
+
+// Zapis retezce do vysilaci fronty
+void HCOM_WriteString(uchar * Text, uchar MaxSize)
+{ uchar i;
+
+  for(i=0; (Text[i] && (i<MaxSize)); i++)
+  { if(~HCOM_WriteChar(Text[i])) break;
+  }
+}
+
+
+
+void HCOM_Init()
+{ uchar i;
+
+  bHCOM_RIBUF=0;
+  HCOM_RW_IX=0;
+  HCOM_RR_IX=0;
+  HCOM_RBIB=0;
+  HCOM_RByte=0;
+  for(i=0; i<sizeof(HCOM_RECBUF); i++) HCOM_RECBUF[i]=0;
+  bHCOM_RB_Overflow=0;
+
+  HCOM_SW_IX=0;
+  HCOM_SR_IX=0;
+  HCOM_SBIB=0;
+  bHCOM_StartSend=0;
+  HCOM_SDELAY=cSDELAY;
+  for(i=0; i<sizeof(HCOM_SNDBUF); i++) HCOM_SNDBUF[i]=0;
+  bHCOM_SB_Overflow=0;
+
+  bHCOM_PtrDataSend=0;
+  HCOM_DataPtr = 0;
+  HCOM_MaxIndex=0;
+}
+
+
+bit HCOM_Get_Var(uint VarID)
+{ switch(VarID)
+  { case cID_HCOM_Init:    return(0);
+    case cID_HCOM_SendPtr: return(bHCOM_PtrDataSend);
+  }
+}
+

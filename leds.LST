@@ -1,0 +1,847 @@
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE LEDS
+OBJECT MODULE PLACED IN leds.OBJ
+COMPILER INVOKED BY: E:\PRGJAZ\CPU51\C51_v612\C51\BIN\C51.EXE leds.C51 DEBUG CODE LISTINCLUDE
+
+stmt level    source
+
+   1          //-------------------------------------------------------------------------//
+   2          /////////////////////////////////////////////////////////////////////////////
+   3          // +---------------------------------------------------------------------+ //
+   4          // |                             LEDs driver                             | //
+   5          // |                              ---------                              | //
+   6          // |                       Verze 1.01 Build 051002                       | //
+   7          // |                         Tomas Hujer (c) 2005                        | //
+   8          // +---------------------------------------------------------------------+ //
+   9          // | Driver signalizacnich LED                                           | //
+  10          // +---------------------------------------------------------------------+ //
+  11          /////////////////////////////////////////////////////////////////////////////
+  12          //-------------------------------------------------------------------------//
+  13          #define uchar unsigned char
+  14          #define uint unsigned int
+  15          
+  16          #include <reg52.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  REG52.H
+   3      =1  
+   4      =1  Header file for generic 80C52 and 80C32 microcontroller.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  /*  BYTE Registers  */
+  10      =1  sfr P0    = 0x80;
+  11      =1  sfr P1    = 0x90;
+  12      =1  sfr P2    = 0xA0;
+  13      =1  sfr P3    = 0xB0;
+  14      =1  sfr PSW   = 0xD0;
+  15      =1  sfr ACC   = 0xE0;
+  16      =1  sfr B     = 0xF0;
+  17      =1  sfr SP    = 0x81;
+  18      =1  sfr DPL   = 0x82;
+  19      =1  sfr DPH   = 0x83;
+  20      =1  sfr PCON  = 0x87;
+  21      =1  sfr TCON  = 0x88;
+  22      =1  sfr TMOD  = 0x89;
+  23      =1  sfr TL0   = 0x8A;
+  24      =1  sfr TL1   = 0x8B;
+  25      =1  sfr TH0   = 0x8C;
+  26      =1  sfr TH1   = 0x8D;
+  27      =1  sfr IE    = 0xA8;
+  28      =1  sfr IP    = 0xB8;
+  29      =1  sfr SCON  = 0x98;
+  30      =1  sfr SBUF  = 0x99;
+  31      =1  
+  32      =1  /*  8052 Extensions  */
+  33      =1  sfr T2CON  = 0xC8;
+  34      =1  sfr RCAP2L = 0xCA;
+  35      =1  sfr RCAP2H = 0xCB;
+  36      =1  sfr TL2    = 0xCC;
+  37      =1  sfr TH2    = 0xCD;
+  38      =1  
+  39      =1  
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 2   
+
+  40      =1  /*  BIT Registers  */
+  41      =1  /*  PSW  */
+  42      =1  sbit CY    = PSW^7;
+  43      =1  sbit AC    = PSW^6;
+  44      =1  sbit F0    = PSW^5;
+  45      =1  sbit RS1   = PSW^4;
+  46      =1  sbit RS0   = PSW^3;
+  47      =1  sbit OV    = PSW^2;
+  48      =1  sbit P     = PSW^0; //8052 only
+  49      =1  
+  50      =1  /*  TCON  */
+  51      =1  sbit TF1   = TCON^7;
+  52      =1  sbit TR1   = TCON^6;
+  53      =1  sbit TF0   = TCON^5;
+  54      =1  sbit TR0   = TCON^4;
+  55      =1  sbit IE1   = TCON^3;
+  56      =1  sbit IT1   = TCON^2;
+  57      =1  sbit IE0   = TCON^1;
+  58      =1  sbit IT0   = TCON^0;
+  59      =1  
+  60      =1  /*  IE  */
+  61      =1  sbit EA    = IE^7;
+  62      =1  sbit ET2   = IE^5; //8052 only
+  63      =1  sbit ES    = IE^4;
+  64      =1  sbit ET1   = IE^3;
+  65      =1  sbit EX1   = IE^2;
+  66      =1  sbit ET0   = IE^1;
+  67      =1  sbit EX0   = IE^0;
+  68      =1  
+  69      =1  /*  IP  */
+  70      =1  sbit PT2   = IP^5;
+  71      =1  sbit PS    = IP^4;
+  72      =1  sbit PT1   = IP^3;
+  73      =1  sbit PX1   = IP^2;
+  74      =1  sbit PT0   = IP^1;
+  75      =1  sbit PX0   = IP^0;
+  76      =1  
+  77      =1  /*  P3  */
+  78      =1  sbit RD    = P3^7;
+  79      =1  sbit WR    = P3^6;
+  80      =1  sbit T1    = P3^5;
+  81      =1  sbit T0    = P3^4;
+  82      =1  sbit INT1  = P3^3;
+  83      =1  sbit INT0  = P3^2;
+  84      =1  sbit TXD   = P3^1;
+  85      =1  sbit RXD   = P3^0;
+  86      =1  
+  87      =1  /*  SCON  */
+  88      =1  sbit SM0   = SCON^7;
+  89      =1  sbit SM1   = SCON^6;
+  90      =1  sbit SM2   = SCON^5;
+  91      =1  sbit REN   = SCON^4;
+  92      =1  sbit TB8   = SCON^3;
+  93      =1  sbit RB8   = SCON^2;
+  94      =1  sbit TI    = SCON^1;
+  95      =1  sbit RI    = SCON^0;
+  96      =1  
+  97      =1  /*  P1  */
+  98      =1  sbit T2EX  = P1^1; // 8052 only
+  99      =1  sbit T2    = P1^0; // 8052 only
+ 100      =1               
+ 101      =1  /*  T2CON  */
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 3   
+
+ 102      =1  sbit TF2    = T2CON^7;
+ 103      =1  sbit EXF2   = T2CON^6;
+ 104      =1  sbit RCLK   = T2CON^5;
+ 105      =1  sbit TCLK   = T2CON^4;
+ 106      =1  sbit EXEN2  = T2CON^3;
+ 107      =1  sbit TR2    = T2CON^2;
+ 108      =1  sbit C_T2   = T2CON^1;
+ 109      =1  sbit CP_RL2 = T2CON^0;
+  17          #include <stdio.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  STDIO.H
+   3      =1  
+   4      =1  Prototypes for standard I/O functions.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  #ifndef EOF
+  10      =1   #define EOF -1
+  11      =1  #endif
+  12      =1  
+  13      =1  #ifndef NULL
+  14      =1   #define NULL ((void *) 0)
+  15      =1  #endif
+  16      =1  
+  17      =1  #ifndef _SIZE_T
+  18      =1   #define _SIZE_T
+  19      =1   typedef unsigned int size_t;
+  20      =1  #endif
+  21      =1  
+  22      =1  #pragma SAVE
+  23      =1  #pragma REGPARMS
+  24      =1  extern char _getkey (void);
+  25      =1  extern char getchar (void);
+  26      =1  extern char ungetchar (char);
+  27      =1  extern char putchar (char);
+  28      =1  extern int printf   (const char *, ...);
+  29      =1  extern int sprintf  (char *, const char *, ...);
+  30      =1  extern int vprintf  (const char *, char *);
+  31      =1  extern int vsprintf (char *, const char *, char *);
+  32      =1  extern char *gets (char *, int n);
+  33      =1  extern int scanf (const char *, ...);
+  34      =1  extern int sscanf (char *, const char *, ...);
+  35      =1  extern int puts (const char *);
+  36      =1  
+  37      =1  #pragma RESTORE
+  18          #include "leds.k"
+   1      =1  
+   2      =1  /*-------------------------------------------------------------------------*/
+   3      =1  // Prirazeni ID k LED
+   4      =1  #define cLED0             0
+   5      =1  #define cLED1             1
+   6      =1  #define cLED2             2
+   7      =1  #define cLED3             3
+   8      =1  #define cLED4             4
+   9      =1  #define cLED5             5
+  10      =1  #define cLED6             6
+  11      =1  #define cLED7             7
+  12      =1  
+  13      =1  #define cLED_RD_HCOM      0
+  14      =1  #define cLED_WR_HCOM      1
+  15      =1  #define cLED_RD_EEP       2
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 4   
+
+  16      =1  #define cLED_WR_EEP       3
+  17      =1  #define cLED_RD_RG        4
+  18      =1  #define cLED_WR_RG        5
+  19      =1  #define cLED_RD_SYNCH     6
+  20      =1  #define cLED_WR_SYNCH     7
+  21      =1  
+  22      =1  #define cLED_StayTime     5       // Doba svitu LED v rezimu Stay (*100ms)
+  23      =1  
+  19          #include "pins.h"
+   1      =1  
+   2      =1  // Konfigurace HW prepinacu
+   3      =1  sbit    swtchTestMode   = P1^0;    // Testovaci mod, SMS nejsou skutecne odeslany
+   4      =1  sbit    swtchBridge     = P1^1;    // Prepinac komunikace - 232<->485 bridge
+   5      =1  sbit    swtchDebugMsgs  = P1^2;    // Povoleni ladicich zprav
+   6      =1  sbit    swtchConfigMode = P1^3;    // Konfiguracni mod
+   7      =1  
+   8      =1  // Prirazeni ovladacich bitu k pinum
+   9      =1  sbit    SCL             = P1^4;    // Sit - Komunikace 485 (Hodiny)
+  10      =1  sbit    SDA             = P1^5;    // Sit - Komunikace 485 (Data)
+  11      =1  sbit    M_S             = P1^7;    // Propojeni komunikace
+  12      =1  sbit    IGN             = P2^7;    // Ignition GSM modemu
+  13      =1  #define RXD1              INT0     // Emulovany serial (Prijem)
+  14      =1  #define TXD1                T1     // Emulovany serial (Vysilani)
+  15      =1  #define DIR1                T0     // T0 ... prepinani smeru toku dat
+  16      =1  #define RXM               INT1
+  17      =1  
+  18      =1  // Prirazeni pinu pro synchronni komunikaci s externim zarizenim
+  19      =1  sbit pin_HSI = P2^0;
+  20      =1  sbit pin_HSO = P2^1;
+  21      =1  sbit pin_D0  = P2^2;
+  22      =1  sbit pin_D1  = P2^3;
+  23      =1  sbit pin_D2  = P2^4;
+  24      =1  sbit pin_D3  = P2^5;
+  25      =1  
+  26      =1  // Prirazeni LED
+  27      =1  sbit pin_LED0 = P0^0;    // Pin pro LED0
+  28      =1  sbit pin_LED1 = P0^1;    // Pin pro LED1
+  29      =1  sbit pin_LED2 = P0^2;    // Pin pro LED2
+  30      =1  sbit pin_LED3 = P0^3;    // Pin pro LED3
+  31      =1  sbit pin_LED4 = P0^4;    // Pin pro LED4
+  32      =1  sbit pin_LED5 = P0^5;    // Pin pro LED5
+  33      =1  sbit pin_LED6 = P0^6;    // Pin pro LED4
+  34      =1  sbit pin_LED7 = P0^7;    // Pin pro LED5
+  35      =1  
+  20          #include "time.h"
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void Time_SetTime(uchar Hour,uchar Min,uchar Sec);
+   5      =1  extern void Time_SetDate(uchar Year,uchar Month,uchar Day);
+   6      =1  extern uchar Time_GetHour();
+   7      =1  extern uchar Time_GetMin();
+   8      =1  extern uchar Time_GetSec();
+   9      =1  extern uchar Time_GetYear();
+  10      =1  extern uchar Time_GetMonth();
+  11      =1  extern uchar Time_GetDay();
+  12      =1  extern void Time_SetHour(uchar Hour);
+  13      =1  extern void Time_SetMin(uchar Min);
+  14      =1  extern void Time_SetSec(uchar Sec);
+  15      =1  extern void Time_SetYear(uchar Year);
+  16      =1  extern void Time_SetMonth(uchar Month);
+  17      =1  extern void Time_SetDay(uchar Day);
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 5   
+
+  18      =1  extern void Time_Init();
+  19      =1  
+  20      =1  extern bit  bTimeout_1Sec;
+  21      =1  extern void Timeout_Set(uchar Counter, uint Time);
+  22      =1  extern bit  Timeout(uchar Counter);
+  23      =1  extern uint Timeout_Value(uchar Counter);
+  24      =1  
+  21          #include "time_def.k"
+   1      =1  
+   2      =1  // Definice pro textovy report
+   3      =1  #define  cTime_TimeoutsReport  1
+   4      =1  #define  cTime_SysTimeReport   2
+   5      =1  
+   6      =1  // Prirazeni timeoutu rutinam
+   7      =1  #define cMain_TimeGuard          0  // Main:     Spousteni casovych akci
+   8      =1  #define cMain_Delay              1  // Main:     Akce "Zpozdeni"
+   9      =1  #define cAction_Timeout          2  // Main:     Process driver
+  10      =1  #define cAction_Timeout2         3  // Main:     Process driver 2
+  11      =1  #define cEEP_WriteData           4  // EEPROM:   Sekvencni zapis dat
+  12      =1  #define cEEP_Clear               5  // EEPROM:   Sekvencni vymazani
+  13      =1  #define cHCOM_IntUp              6  // HCOM:     Konec vysilani bez preruseni
+  14      =1  #define cLoopTest                7  // LoopTest: Test hlavni smycky
+  15      =1  #define cLED_Timer               8  // LED:      Rizeni doby svitu signalizacnich LED
+  16      =1  #define cSYNCH                   9  // SYNCH:    Synchronni komunikace
+  17      =1  // ----------------------------
+  18      =1  #define No_Timeouts             10  // Pocet timeoutu celkem
+  19      =1  
+  22          
+  23          uchar xdata LED0_time;
+  24          uchar xdata LED1_time;
+  25          uchar xdata LED2_time;
+  26          uchar xdata LED3_time;
+  27          uchar xdata LED4_time;
+  28          uchar xdata LED5_time;
+  29          uchar xdata LED6_time;
+  30          uchar xdata LED7_time;
+  31          
+  32          
+  33          void LED_ON(uchar LED_ID)
+  34          { switch(LED_ID)
+  35   1        { case cLED0: pin_LED0=0; break;
+  36   2          case cLED1: pin_LED1=0; break;
+  37   2          case cLED2: pin_LED2=0; break;
+  38   2          case cLED3: pin_LED3=0; break;
+  39   2          case cLED4: pin_LED4=0; break;
+  40   2          case cLED5: pin_LED5=0; break;
+  41   2          case cLED6: pin_LED6=0; break;
+  42   2          case cLED7: pin_LED7=0; break;
+  43   2        }
+  44   1      }
+  45          
+  46          
+  47          void LED_OFF(uchar LED_ID)
+  48          { switch(LED_ID)
+  49   1        { case cLED0: pin_LED0=1; break;
+  50   2          case cLED1: pin_LED1=1; break;
+  51   2          case cLED2: pin_LED2=1; break;
+  52   2          case cLED3: pin_LED3=1; break;
+  53   2          case cLED4: pin_LED4=1; break;
+  54   2          case cLED5: pin_LED5=1; break;
+  55   2          case cLED6: pin_LED6=0; break;
+  56   2          case cLED7: pin_LED7=0; break;
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 6   
+
+  57   2        }
+  58   1      }
+  59          
+  60          
+  61          void LED_Stay(uchar LED_ID)
+  62          { switch(LED_ID)
+  63   1        { case cLED0: LED0_time=cLED_StayTime; pin_LED0=0; break;
+  64   2          case cLED1: LED1_time=cLED_StayTime; pin_LED1=0; break;
+  65   2          case cLED2: LED2_time=cLED_StayTime; pin_LED2=0; break;
+  66   2          case cLED3: LED3_time=cLED_StayTime; pin_LED3=0; break;
+  67   2          case cLED4: LED4_time=cLED_StayTime; pin_LED4=0; break;
+  68   2          case cLED5: LED5_time=cLED_StayTime; pin_LED5=0; break;
+  69   2          case cLED6: LED6_time=cLED_StayTime; pin_LED6=0; break;
+  70   2          case cLED7: LED7_time=cLED_StayTime; pin_LED7=0; break;
+  71   2        }
+  72   1      }
+  73          
+  74          
+  75          void LED_Init()
+  76          { pin_LED0=1;
+  77   1        pin_LED1=1;
+  78   1        pin_LED2=1;
+  79   1        pin_LED3=1;
+  80   1        pin_LED4=1;
+  81   1        pin_LED5=1;
+  82   1        pin_LED6=1;
+  83   1        pin_LED7=1;
+  84   1        LED0_time=0;
+  85   1        LED1_time=0;
+  86   1        LED2_time=0;
+  87   1        LED3_time=0;
+  88   1        LED4_time=0;
+  89   1        LED5_time=0;
+  90   1        LED6_time=0;
+  91   1        LED7_time=0;
+  92   1        Timeout_Set(cLED_Timer, 100);
+  93   1      }
+  94          
+  95          
+  96          void LED_Proc()
+  97          { if(Timeout(cLED_Timer))
+  98   1        { if(LED0_time) { LED0_time--; if(!LED0_time) pin_LED0=1;  }
+  99   2          if(LED1_time) { LED1_time--; if(!LED1_time) pin_LED1=1;  }
+ 100   2          if(LED2_time) { LED2_time--; if(!LED2_time) pin_LED2=1;  }
+ 101   2          if(LED3_time) { LED3_time--; if(!LED3_time) pin_LED3=1;  }
+ 102   2          if(LED4_time) { LED4_time--; if(!LED4_time) pin_LED4=1;  }
+ 103   2          if(LED5_time) { LED5_time--; if(!LED5_time) pin_LED5=1;  }
+ 104   2          if(LED6_time) { LED6_time--; if(!LED6_time) pin_LED6=1;  }
+ 105   2          if(LED7_time) { LED7_time--; if(!LED7_time) pin_LED7=1;  }
+ 106   2          Timeout_Set(cLED_Timer, 10);
+ 107   2        }
+ 108   1      }
+ 109          
+ 110          
+ 111          uchar LED_GetStayTime(uchar LED_ID)
+ 112          { switch(LED_ID)
+ 113   1        { case cLED0: return(LED0_time); break;
+ 114   2          case cLED1: return(LED1_time); break;
+ 115   2          case cLED2: return(LED2_time); break;
+ 116   2          case cLED3: return(LED3_time); break;
+ 117   2          case cLED4: return(LED4_time); break;
+ 118   2          case cLED5: return(LED5_time); break;
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 7   
+
+ 119   2          case cLED6: return(LED6_time); break;
+ 120   2          case cLED7: return(LED7_time); break;
+ 121   2        }
+ 122   1      }
+ 123          
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 8   
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION _LED_ON (BEGIN)
+;---- Variable 'LED_ID' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 33
+                                           ; SOURCE LINE # 34
+0000 EF                MOV     A,R7
+0001 B40800            CJNE    A,#08H,?C0060
+0004         ?C0060:
+0004 5036              JNC     ?C0010
+0006 900000      R     MOV     DPTR,#?C0061
+0009 F8                MOV     R0,A
+000A 28                ADD     A,R0
+000B 28                ADD     A,R0
+000C 73                JMP     @A+DPTR
+000D         ?C0061:
+000D 020000      R     LJMP    ?C0002
+0010 020000      R     LJMP    ?C0003
+0013 020000      R     LJMP    ?C0004
+0016 020000      R     LJMP    ?C0005
+0019 020000      R     LJMP    ?C0006
+001C 020000      R     LJMP    ?C0007
+001F 020000      R     LJMP    ?C0008
+0022 020000      R     LJMP    ?C0009
+                                           ; SOURCE LINE # 35
+0025         ?C0002:
+0025 C280              CLR     pin_LED0
+0027 22                RET     
+                                           ; SOURCE LINE # 36
+0028         ?C0003:
+0028 C281              CLR     pin_LED1
+002A 22                RET     
+                                           ; SOURCE LINE # 37
+002B         ?C0004:
+002B C282              CLR     pin_LED2
+002D 22                RET     
+                                           ; SOURCE LINE # 38
+002E         ?C0005:
+002E C283              CLR     pin_LED3
+0030 22                RET     
+                                           ; SOURCE LINE # 39
+0031         ?C0006:
+0031 C284              CLR     pin_LED4
+0033 22                RET     
+                                           ; SOURCE LINE # 40
+0034         ?C0007:
+0034 C285              CLR     pin_LED5
+0036 22                RET     
+                                           ; SOURCE LINE # 41
+0037         ?C0008:
+0037 C286              CLR     pin_LED6
+0039 22                RET     
+                                           ; SOURCE LINE # 42
+003A         ?C0009:
+003A C287              CLR     pin_LED7
+                                           ; SOURCE LINE # 43
+                                           ; SOURCE LINE # 44
+003C         ?C0010:
+003C 22                RET     
+             ; FUNCTION _LED_ON (END)
+
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 9   
+
+             ; FUNCTION _LED_OFF (BEGIN)
+;---- Variable 'LED_ID' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 47
+                                           ; SOURCE LINE # 48
+0000 EF                MOV     A,R7
+0001 B40800            CJNE    A,#08H,?C0062
+0004         ?C0062:
+0004 5036              JNC     ?C0020
+0006 900000      R     MOV     DPTR,#?C0063
+0009 F8                MOV     R0,A
+000A 28                ADD     A,R0
+000B 28                ADD     A,R0
+000C 73                JMP     @A+DPTR
+000D         ?C0063:
+000D 020000      R     LJMP    ?C0012
+0010 020000      R     LJMP    ?C0013
+0013 020000      R     LJMP    ?C0014
+0016 020000      R     LJMP    ?C0015
+0019 020000      R     LJMP    ?C0016
+001C 020000      R     LJMP    ?C0017
+001F 020000      R     LJMP    ?C0018
+0022 020000      R     LJMP    ?C0019
+                                           ; SOURCE LINE # 49
+0025         ?C0012:
+0025 D280              SETB    pin_LED0
+0027 22                RET     
+                                           ; SOURCE LINE # 50
+0028         ?C0013:
+0028 D281              SETB    pin_LED1
+002A 22                RET     
+                                           ; SOURCE LINE # 51
+002B         ?C0014:
+002B D282              SETB    pin_LED2
+002D 22                RET     
+                                           ; SOURCE LINE # 52
+002E         ?C0015:
+002E D283              SETB    pin_LED3
+0030 22                RET     
+                                           ; SOURCE LINE # 53
+0031         ?C0016:
+0031 D284              SETB    pin_LED4
+0033 22                RET     
+                                           ; SOURCE LINE # 54
+0034         ?C0017:
+0034 D285              SETB    pin_LED5
+0036 22                RET     
+                                           ; SOURCE LINE # 55
+0037         ?C0018:
+0037 C286              CLR     pin_LED6
+0039 22                RET     
+                                           ; SOURCE LINE # 56
+003A         ?C0019:
+003A C287              CLR     pin_LED7
+                                           ; SOURCE LINE # 57
+                                           ; SOURCE LINE # 58
+003C         ?C0020:
+003C 22                RET     
+             ; FUNCTION _LED_OFF (END)
+
+             ; FUNCTION _LED_Stay (BEGIN)
+;---- Variable 'LED_ID' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 61
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 10  
+
+                                           ; SOURCE LINE # 62
+0000 EF                MOV     A,R7
+0001 B40800            CJNE    A,#08H,?C0064
+0004         ?C0064:
+0004 5066              JNC     ?C0030
+0006 900000      R     MOV     DPTR,#?C0065
+0009 F8                MOV     R0,A
+000A 28                ADD     A,R0
+000B 28                ADD     A,R0
+000C 73                JMP     @A+DPTR
+000D         ?C0065:
+000D 020000      R     LJMP    ?C0022
+0010 020000      R     LJMP    ?C0023
+0013 020000      R     LJMP    ?C0024
+0016 020000      R     LJMP    ?C0025
+0019 020000      R     LJMP    ?C0026
+001C 020000      R     LJMP    ?C0027
+001F 020000      R     LJMP    ?C0028
+0022 020000      R     LJMP    ?C0029
+                                           ; SOURCE LINE # 63
+0025         ?C0022:
+0025 900000      R     MOV     DPTR,#LED0_time
+0028 7405              MOV     A,#05H
+002A F0                MOVX    @DPTR,A
+002B C280              CLR     pin_LED0
+002D 22                RET     
+                                           ; SOURCE LINE # 64
+002E         ?C0023:
+002E 900000      R     MOV     DPTR,#LED1_time
+0031 7405              MOV     A,#05H
+0033 F0                MOVX    @DPTR,A
+0034 C281              CLR     pin_LED1
+0036 22                RET     
+                                           ; SOURCE LINE # 65
+0037         ?C0024:
+0037 900000      R     MOV     DPTR,#LED2_time
+003A 7405              MOV     A,#05H
+003C F0                MOVX    @DPTR,A
+003D C282              CLR     pin_LED2
+003F 22                RET     
+                                           ; SOURCE LINE # 66
+0040         ?C0025:
+0040 900000      R     MOV     DPTR,#LED3_time
+0043 7405              MOV     A,#05H
+0045 F0                MOVX    @DPTR,A
+0046 C283              CLR     pin_LED3
+0048 22                RET     
+                                           ; SOURCE LINE # 67
+0049         ?C0026:
+0049 900000      R     MOV     DPTR,#LED4_time
+004C 7405              MOV     A,#05H
+004E F0                MOVX    @DPTR,A
+004F C284              CLR     pin_LED4
+0051 22                RET     
+                                           ; SOURCE LINE # 68
+0052         ?C0027:
+0052 900000      R     MOV     DPTR,#LED5_time
+0055 7405              MOV     A,#05H
+0057 F0                MOVX    @DPTR,A
+0058 C285              CLR     pin_LED5
+005A 22                RET     
+                                           ; SOURCE LINE # 69
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 11  
+
+005B         ?C0028:
+005B 900000      R     MOV     DPTR,#LED6_time
+005E 7405              MOV     A,#05H
+0060 F0                MOVX    @DPTR,A
+0061 C286              CLR     pin_LED6
+0063 22                RET     
+                                           ; SOURCE LINE # 70
+0064         ?C0029:
+0064 900000      R     MOV     DPTR,#LED7_time
+0067 7405              MOV     A,#05H
+0069 F0                MOVX    @DPTR,A
+006A C287              CLR     pin_LED7
+                                           ; SOURCE LINE # 71
+                                           ; SOURCE LINE # 72
+006C         ?C0030:
+006C 22                RET     
+             ; FUNCTION _LED_Stay (END)
+
+             ; FUNCTION LED_Init (BEGIN)
+                                           ; SOURCE LINE # 75
+                                           ; SOURCE LINE # 76
+0000 D280              SETB    pin_LED0
+                                           ; SOURCE LINE # 77
+0002 D281              SETB    pin_LED1
+                                           ; SOURCE LINE # 78
+0004 D282              SETB    pin_LED2
+                                           ; SOURCE LINE # 79
+0006 D283              SETB    pin_LED3
+                                           ; SOURCE LINE # 80
+0008 D284              SETB    pin_LED4
+                                           ; SOURCE LINE # 81
+000A D285              SETB    pin_LED5
+                                           ; SOURCE LINE # 82
+000C D286              SETB    pin_LED6
+                                           ; SOURCE LINE # 83
+000E D287              SETB    pin_LED7
+                                           ; SOURCE LINE # 84
+0010 E4                CLR     A
+0011 900000      R     MOV     DPTR,#LED0_time
+0014 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 85
+0015 A3                INC     DPTR
+0016 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 86
+0017 A3                INC     DPTR
+0018 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 87
+0019 A3                INC     DPTR
+001A F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 88
+001B A3                INC     DPTR
+001C F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 89
+001D A3                INC     DPTR
+001E F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 90
+001F A3                INC     DPTR
+0020 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 91
+0021 A3                INC     DPTR
+0022 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 92
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 12  
+
+0023 7D64              MOV     R5,#064H
+0025 FC                MOV     R4,A
+0026 7F08              MOV     R7,#08H
+0028 020000      E     LJMP    _Timeout_Set
+             ; FUNCTION LED_Init (END)
+
+             ; FUNCTION LED_Proc (BEGIN)
+                                           ; SOURCE LINE # 96
+                                           ; SOURCE LINE # 97
+0000 7F08              MOV     R7,#08H
+0002 120000      E     LCALL   _Timeout
+0005 5071              JNC     ?C0049
+                                           ; SOURCE LINE # 98
+0007 900000      R     MOV     DPTR,#LED0_time
+000A E0                MOVX    A,@DPTR
+000B 6007              JZ      ?C0033
+000D 14                DEC     A
+000E F0                MOVX    @DPTR,A
+000F E0                MOVX    A,@DPTR
+0010 7002              JNZ     ?C0033
+0012 D280              SETB    pin_LED0
+0014         ?C0033:
+                                           ; SOURCE LINE # 99
+0014 900000      R     MOV     DPTR,#LED1_time
+0017 E0                MOVX    A,@DPTR
+0018 6007              JZ      ?C0035
+001A 14                DEC     A
+001B F0                MOVX    @DPTR,A
+001C E0                MOVX    A,@DPTR
+001D 7002              JNZ     ?C0035
+001F D281              SETB    pin_LED1
+0021         ?C0035:
+                                           ; SOURCE LINE # 100
+0021 900000      R     MOV     DPTR,#LED2_time
+0024 E0                MOVX    A,@DPTR
+0025 6007              JZ      ?C0037
+0027 14                DEC     A
+0028 F0                MOVX    @DPTR,A
+0029 E0                MOVX    A,@DPTR
+002A 7002              JNZ     ?C0037
+002C D282              SETB    pin_LED2
+002E         ?C0037:
+                                           ; SOURCE LINE # 101
+002E 900000      R     MOV     DPTR,#LED3_time
+0031 E0                MOVX    A,@DPTR
+0032 6007              JZ      ?C0039
+0034 14                DEC     A
+0035 F0                MOVX    @DPTR,A
+0036 E0                MOVX    A,@DPTR
+0037 7002              JNZ     ?C0039
+0039 D283              SETB    pin_LED3
+003B         ?C0039:
+                                           ; SOURCE LINE # 102
+003B 900000      R     MOV     DPTR,#LED4_time
+003E E0                MOVX    A,@DPTR
+003F 6007              JZ      ?C0041
+0041 14                DEC     A
+0042 F0                MOVX    @DPTR,A
+0043 E0                MOVX    A,@DPTR
+0044 7002              JNZ     ?C0041
+0046 D284              SETB    pin_LED4
+0048         ?C0041:
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 13  
+
+                                           ; SOURCE LINE # 103
+0048 900000      R     MOV     DPTR,#LED5_time
+004B E0                MOVX    A,@DPTR
+004C 6007              JZ      ?C0043
+004E 14                DEC     A
+004F F0                MOVX    @DPTR,A
+0050 E0                MOVX    A,@DPTR
+0051 7002              JNZ     ?C0043
+0053 D285              SETB    pin_LED5
+0055         ?C0043:
+                                           ; SOURCE LINE # 104
+0055 900000      R     MOV     DPTR,#LED6_time
+0058 E0                MOVX    A,@DPTR
+0059 6007              JZ      ?C0045
+005B 14                DEC     A
+005C F0                MOVX    @DPTR,A
+005D E0                MOVX    A,@DPTR
+005E 7002              JNZ     ?C0045
+0060 D286              SETB    pin_LED6
+0062         ?C0045:
+                                           ; SOURCE LINE # 105
+0062 900000      R     MOV     DPTR,#LED7_time
+0065 E0                MOVX    A,@DPTR
+0066 6007              JZ      ?C0047
+0068 14                DEC     A
+0069 F0                MOVX    @DPTR,A
+006A E0                MOVX    A,@DPTR
+006B 7002              JNZ     ?C0047
+006D D287              SETB    pin_LED7
+006F         ?C0047:
+                                           ; SOURCE LINE # 106
+006F 7D0A              MOV     R5,#0AH
+0071 7C00              MOV     R4,#00H
+0073 7F08              MOV     R7,#08H
+0075 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 107
+                                           ; SOURCE LINE # 108
+0078         ?C0049:
+0078 22                RET     
+             ; FUNCTION LED_Proc (END)
+
+             ; FUNCTION _LED_GetStayTime (BEGIN)
+;---- Variable 'LED_ID' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 111
+                                           ; SOURCE LINE # 112
+0000 EF                MOV     A,R7
+0001 B40800            CJNE    A,#08H,?C0066
+0004         ?C0066:
+0004 504E              JNC     ?C0052
+0006 900000      R     MOV     DPTR,#?C0067
+0009 F8                MOV     R0,A
+000A 28                ADD     A,R0
+000B 28                ADD     A,R0
+000C 73                JMP     @A+DPTR
+000D         ?C0067:
+000D 020000      R     LJMP    ?C0051
+0010 020000      R     LJMP    ?C0053
+0013 020000      R     LJMP    ?C0054
+0016 020000      R     LJMP    ?C0055
+0019 020000      R     LJMP    ?C0056
+001C 020000      R     LJMP    ?C0057
+001F 020000      R     LJMP    ?C0058
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 14  
+
+0022 020000      R     LJMP    ?C0059
+                                           ; SOURCE LINE # 113
+0025         ?C0051:
+0025 900000      R     MOV     DPTR,#LED0_time
+0028 E0                MOVX    A,@DPTR
+0029 FF                MOV     R7,A
+002A 22                RET     
+                                           ; SOURCE LINE # 114
+002B         ?C0053:
+002B 900000      R     MOV     DPTR,#LED1_time
+002E E0                MOVX    A,@DPTR
+002F FF                MOV     R7,A
+0030 22                RET     
+                                           ; SOURCE LINE # 115
+0031         ?C0054:
+0031 900000      R     MOV     DPTR,#LED2_time
+0034 E0                MOVX    A,@DPTR
+0035 FF                MOV     R7,A
+0036 22                RET     
+                                           ; SOURCE LINE # 116
+0037         ?C0055:
+0037 900000      R     MOV     DPTR,#LED3_time
+003A E0                MOVX    A,@DPTR
+003B FF                MOV     R7,A
+003C 22                RET     
+                                           ; SOURCE LINE # 117
+003D         ?C0056:
+003D 900000      R     MOV     DPTR,#LED4_time
+0040 E0                MOVX    A,@DPTR
+0041 FF                MOV     R7,A
+0042 22                RET     
+                                           ; SOURCE LINE # 118
+0043         ?C0057:
+0043 900000      R     MOV     DPTR,#LED5_time
+0046 E0                MOVX    A,@DPTR
+0047 FF                MOV     R7,A
+0048 22                RET     
+                                           ; SOURCE LINE # 119
+0049         ?C0058:
+0049 900000      R     MOV     DPTR,#LED6_time
+004C E0                MOVX    A,@DPTR
+004D FF                MOV     R7,A
+004E 22                RET     
+                                           ; SOURCE LINE # 120
+004F         ?C0059:
+004F 900000      R     MOV     DPTR,#LED7_time
+0052 E0                MOVX    A,@DPTR
+0053 FF                MOV     R7,A
+                                           ; SOURCE LINE # 121
+                                           ; SOURCE LINE # 122
+0054         ?C0052:
+0054 22                RET     
+             ; FUNCTION _LED_GetStayTime (END)
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    480    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      8    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+C51 COMPILER V6.12  LEDS                                                                   10/23/2005 15:48:35 PAGE 15  
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

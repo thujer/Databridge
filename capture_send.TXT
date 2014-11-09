@@ -1,0 +1,582 @@
+
+SendMsg: SrcPtrIx_w:3, pSrcBuf:c:0cc6, PtrInBuf:1/5, 
+
+SendBit[1]: DBO=1 SEO=0 HSO=0
+Wait ~DBO...
+
+SetNextDataBit:
+ SrcBitIndex:0,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 1,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:1,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 2,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:2,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 4,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:3,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 8,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:4,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 16,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:5,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 32,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:6,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 64,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:7,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:,
+ SrcPtr:c:0cc6, offset:0
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:8,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 1,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:9,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 2,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:10,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 4,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:11,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 8,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:12,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 16,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:13,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 32,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:14,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 64,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:15,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:
+,
+ SrcPtr:c:0cc6, offset:1
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:16,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 1,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:17,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 2,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:18,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 4,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:19,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 8,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:20,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 16,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:21,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 32,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:22,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 64,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:23,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:J,
+ SrcPtr:c:0cc6, offset:2
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:24,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 1,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:25,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 2,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:26,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 4,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:27,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 8,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:28,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 16,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:29,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 32,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:30,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 64,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:31,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:u,
+ SrcPtr:c:0cc6, offset:3
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:32,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 1,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:33,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 2,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:34,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 4,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:35,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 8,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:36,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 16,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:37,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 32,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:38,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 64,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:39,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:p,
+ SrcPtr:c:0cc6, offset:4
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:40,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 1,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:41,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 2,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:42,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 4,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:43,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 8,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:44,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 16,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:45,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 32,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:46,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 64,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:47,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:i,
+ SrcPtr:c:0cc6, offset:5
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:48,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 1,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:49,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 2,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:50,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 4,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:51,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 8,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:52,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 16,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:53,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 32,
+ SrcBit: 1
+
+
+SetNextDataBit:
+ SrcBitIndex:54,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 64,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:55,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ OutChar:!,
+ SrcPtr:c:0cc6, offset:6
+ SrcMaskByte: 128,
+ SrcBit: 0
+
+
+SetNextDataBit:
+ SrcBitIndex:56,
+ SrcBytes:7,
+ SrcPtrIx_r:2,
+ SrcBitIndex:0,
+ SrcBytes:0,
+ SrcPtrIx_r:3,
+

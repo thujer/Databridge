@@ -1,0 +1,99 @@
+
+/*=========================================================================*/
+#define SWName            "Data bridge RS232<-/->SYNCH"
+#define SWVersion                "1.04"
+#define SWLastCompile         "23/10/2005"
+/*=========================================================================*/
+
+#include <reg52.h>
+#include <stdio.h>
+#include "cpu_set.h"     // Nastaveni parametru procesoru a prostredi
+#include "hcom_drv.h"    // Driver HW serialu
+#include "hcom_id.k"     // Definice ID pro cteni promennych driveru
+#include "leds.h"        // Driver signalizacnich LED
+#include "pins.h"        // Driver pinu procesoru
+#include "shorttyp.h"    // Zkraceni definice uchar uint a ulong
+#include "synchcom.k"    // Definice pro driver sersynchfulldup
+#include "synchcom.h"    // Driver synchronni seriove fullduplex komunikace
+#include "watchdog.h"    // Definice pripojeni watchdogu
+#include "time.h"
+/*-------------------------------------------------------------------------*/
+
+
+// Inicializace vsech modulu a promennych
+void Main_Init()
+{ CPU_Init();                 // Init procesoru a preruseni
+  HCOM_Init();                // Init HW_serialu
+  LED_Init();                 // Init driveru signalizacnich LED
+  Time_Init();
+  SYNCH_Init();              // Init driveru synchronni seriove fullduplex komunikace
+}
+
+
+void nic()
+{
+  HCOM_Start_NI_TXD();
+  HCOM_End_NI_TXD();
+  HCOM_SendPtr(0, 0);
+  HCOM_Get_Var(0);
+
+  LED_ON(0);
+  LED_OFF(0);
+  LED_Stay(0);
+  LED_Init();
+  LED_Proc();
+  LED_GetStayTime(0);
+
+  Time_SetTime(0,0,0);
+  Time_SetDate(0,0,0);
+  Time_GetHour();
+  Time_GetMin();
+  Time_GetSec();
+  Time_GetYear();
+  Time_GetMonth();
+  Time_GetDay();
+  Time_SetHour(0);
+  Time_SetMin(0);
+  Time_SetSec(0);
+  Time_SetYear(0);
+  Time_SetMonth(0);
+  Time_SetDay(0);
+  Timeout_Value(0);
+
+  HCOM_WriteString(0,0);
+
+  SYNCH_SendMsg(0,0);
+  SYNCH_LogWriteString(0,0);
+}
+
+
+
+/*========================================================================*/
+/*                            Hlavni program                              */
+/*========================================================================*/
+void main()
+{ uchar Nic=0;
+
+  if(Nic) nic();
+
+  Main_Init();                         // Inicializace a spusteni uvodnich akci
+  SYNCH_Init();
+
+  while(1)
+  { if(bHCOM_RIBUF)                    // Prijat znak na serialu
+    { SYNCH_LogWriteChar(HCOM_RByte);
+      bHCOM_RIBUF=0;
+    }
+
+    if(SYNCH_RIBUF)                    // Prijaty znak na synchronni komunikaci
+    { HCOM_WriteChar(SYNCH_GetChar()); // Posli na 232
+      SYNCH_RIBUF=0;
+    }
+    HCOM_PROC();                            // Obsluha HW_serialu
+    SYNCH_Proc();                           // Obsluha synch serial fullduplex
+    LED_Proc();                             // Obsluha signalizacnich LED
+    WDI=~WDI;                               // Obsluha Watchdogu
+  }
+}
+
+  

@@ -1,0 +1,1027 @@
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE HCOM_DRV
+OBJECT MODULE PLACED IN hcom_drv.OBJ
+COMPILER INVOKED BY: E:\PRGJAZ\CPU51\C51_v612\C51\BIN\C51.EXE hcom_drv.C51 DEBUG CODE LISTINCLUDE
+
+stmt level    source
+
+   1          /////////////////////////////////////////////////////////////////////////////
+   2          // ----------------------------------------------------------------------- //
+   3          //              HWSERDRV - Hardware Serial Driver for x51                  //
+   4          //             -------------------------------------------                 //
+   5          //                         Version 2.28                                    //
+   6          //               Writen by Thomas Hujer (c) 1999-2005                      //
+   7          // ----------------------------------------------------------------------- //
+   8          //  Driver for buffered, interrupt communication via RS232                 //
+   9          //  Here is 2 buffers - for receive and for send data. Index of each       //
+  10          //  buffer is rotating type. Each buffer have two indexs - first for       //
+  11          //  write to buffer, second for read from buffer.                          //
+  12          //                                                                         //
+  13          //  Interrupt routine write receive data to HCOM_RECBUF and increment      //
+  14          //  variable HCOM_RBIB, which mean the number of bytes in buffer and       //
+  15          //  status of char in buffer means too.                                    //
+  16          //  Sending process is directing by routine HCOM_PROC(). This routine is   //
+  17          //  called from main loop each or few cycle. Routine wait for count-down   //
+  18          //  variable HCOM_SDELAY, then read byte from HCOM_SNDBUF and write him    //
+  19          //  to SBUF.                                                               //
+  20          //                                                                         //
+  21          // ----------------------------------------------------------------------- //
+  22          //                                                                         //
+  23          //  News> Version 2.25                                                     //
+  24          //                     ----------------------------------------------      //
+  25          //        Version 2.27 Added flags bHCOM_RB_Overflow, which signalize      //
+  26          //                     overflow of Receive buffer. Reset this in main      //
+  27          //                     function.                                           //
+  28          //                     ----------------------------------------------      //
+  29          //        Version 2.28 Added send/receive LED signalization                //
+  30          //                                                                         //
+  31          // ----------------------------------------------------------------------- //
+  32          /////////////////////////////////////////////////////////////////////////////
+  33          
+  34          #include <REG52.H>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  REG52.H
+   3      =1  
+   4      =1  Header file for generic 80C52 and 80C32 microcontroller.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  /*  BYTE Registers  */
+  10      =1  sfr P0    = 0x80;
+  11      =1  sfr P1    = 0x90;
+  12      =1  sfr P2    = 0xA0;
+  13      =1  sfr P3    = 0xB0;
+  14      =1  sfr PSW   = 0xD0;
+  15      =1  sfr ACC   = 0xE0;
+  16      =1  sfr B     = 0xF0;
+  17      =1  sfr SP    = 0x81;
+  18      =1  sfr DPL   = 0x82;
+  19      =1  sfr DPH   = 0x83;
+  20      =1  sfr PCON  = 0x87;
+  21      =1  sfr TCON  = 0x88;
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 2   
+
+  22      =1  sfr TMOD  = 0x89;
+  23      =1  sfr TL0   = 0x8A;
+  24      =1  sfr TL1   = 0x8B;
+  25      =1  sfr TH0   = 0x8C;
+  26      =1  sfr TH1   = 0x8D;
+  27      =1  sfr IE    = 0xA8;
+  28      =1  sfr IP    = 0xB8;
+  29      =1  sfr SCON  = 0x98;
+  30      =1  sfr SBUF  = 0x99;
+  31      =1  
+  32      =1  /*  8052 Extensions  */
+  33      =1  sfr T2CON  = 0xC8;
+  34      =1  sfr RCAP2L = 0xCA;
+  35      =1  sfr RCAP2H = 0xCB;
+  36      =1  sfr TL2    = 0xCC;
+  37      =1  sfr TH2    = 0xCD;
+  38      =1  
+  39      =1  
+  40      =1  /*  BIT Registers  */
+  41      =1  /*  PSW  */
+  42      =1  sbit CY    = PSW^7;
+  43      =1  sbit AC    = PSW^6;
+  44      =1  sbit F0    = PSW^5;
+  45      =1  sbit RS1   = PSW^4;
+  46      =1  sbit RS0   = PSW^3;
+  47      =1  sbit OV    = PSW^2;
+  48      =1  sbit P     = PSW^0; //8052 only
+  49      =1  
+  50      =1  /*  TCON  */
+  51      =1  sbit TF1   = TCON^7;
+  52      =1  sbit TR1   = TCON^6;
+  53      =1  sbit TF0   = TCON^5;
+  54      =1  sbit TR0   = TCON^4;
+  55      =1  sbit IE1   = TCON^3;
+  56      =1  sbit IT1   = TCON^2;
+  57      =1  sbit IE0   = TCON^1;
+  58      =1  sbit IT0   = TCON^0;
+  59      =1  
+  60      =1  /*  IE  */
+  61      =1  sbit EA    = IE^7;
+  62      =1  sbit ET2   = IE^5; //8052 only
+  63      =1  sbit ES    = IE^4;
+  64      =1  sbit ET1   = IE^3;
+  65      =1  sbit EX1   = IE^2;
+  66      =1  sbit ET0   = IE^1;
+  67      =1  sbit EX0   = IE^0;
+  68      =1  
+  69      =1  /*  IP  */
+  70      =1  sbit PT2   = IP^5;
+  71      =1  sbit PS    = IP^4;
+  72      =1  sbit PT1   = IP^3;
+  73      =1  sbit PX1   = IP^2;
+  74      =1  sbit PT0   = IP^1;
+  75      =1  sbit PX0   = IP^0;
+  76      =1  
+  77      =1  /*  P3  */
+  78      =1  sbit RD    = P3^7;
+  79      =1  sbit WR    = P3^6;
+  80      =1  sbit T1    = P3^5;
+  81      =1  sbit T0    = P3^4;
+  82      =1  sbit INT1  = P3^3;
+  83      =1  sbit INT0  = P3^2;
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 3   
+
+  84      =1  sbit TXD   = P3^1;
+  85      =1  sbit RXD   = P3^0;
+  86      =1  
+  87      =1  /*  SCON  */
+  88      =1  sbit SM0   = SCON^7;
+  89      =1  sbit SM1   = SCON^6;
+  90      =1  sbit SM2   = SCON^5;
+  91      =1  sbit REN   = SCON^4;
+  92      =1  sbit TB8   = SCON^3;
+  93      =1  sbit RB8   = SCON^2;
+  94      =1  sbit TI    = SCON^1;
+  95      =1  sbit RI    = SCON^0;
+  96      =1  
+  97      =1  /*  P1  */
+  98      =1  sbit T2EX  = P1^1; // 8052 only
+  99      =1  sbit T2    = P1^0; // 8052 only
+ 100      =1               
+ 101      =1  /*  T2CON  */
+ 102      =1  sbit TF2    = T2CON^7;
+ 103      =1  sbit EXF2   = T2CON^6;
+ 104      =1  sbit RCLK   = T2CON^5;
+ 105      =1  sbit TCLK   = T2CON^4;
+ 106      =1  sbit EXEN2  = T2CON^3;
+ 107      =1  sbit TR2    = T2CON^2;
+ 108      =1  sbit C_T2   = T2CON^1;
+ 109      =1  sbit CP_RL2 = T2CON^0;
+  35          #include "hcom_id.k"
+   1      =1  
+   2      =1  // Definice ID promennych
+   3      =1  #define cID_HCOM_Init    1
+   4      =1  #define cID_HCOM_SendPtr 2
+  36          #include "leds.h"
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void  LED_ON(uchar LED_ID);
+   5      =1  extern void  LED_OFF(uchar LED_ID);
+   6      =1  extern void  LED_Stay(uchar LED_ID);
+   7      =1  extern void  LED_Init();
+   8      =1  extern void  LED_Proc();
+   9      =1  extern uchar LED_GetStayTime(uchar LED_ID);
+  37          #include "leds.k"
+   1      =1  
+   2      =1  /*-------------------------------------------------------------------------*/
+   3      =1  // Prirazeni ID k LED
+   4      =1  #define cLED0             0
+   5      =1  #define cLED1             1
+   6      =1  #define cLED2             2
+   7      =1  #define cLED3             3
+   8      =1  #define cLED4             4
+   9      =1  #define cLED5             5
+  10      =1  #define cLED6             6
+  11      =1  #define cLED7             7
+  12      =1  
+  13      =1  #define cLED_RD_HCOM      0
+  14      =1  #define cLED_WR_HCOM      1
+  15      =1  #define cLED_RD_EEP       2
+  16      =1  #define cLED_WR_EEP       3
+  17      =1  #define cLED_RD_RG        4
+  18      =1  #define cLED_WR_RG        5
+  19      =1  #define cLED_RD_SYNCH     6
+  20      =1  #define cLED_WR_SYNCH     7
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 4   
+
+  21      =1  
+  22      =1  #define cLED_StayTime     5       // Doba svitu LED v rezimu Stay (*100ms)
+  23      =1  
+  38          #include "time_def.k"
+   1      =1  
+   2      =1  // Definice pro textovy report
+   3      =1  #define  cTime_TimeoutsReport  1
+   4      =1  #define  cTime_SysTimeReport   2
+   5      =1  
+   6      =1  // Prirazeni timeoutu rutinam
+   7      =1  #define cMain_TimeGuard          0  // Main:     Spousteni casovych akci
+   8      =1  #define cMain_Delay              1  // Main:     Akce "Zpozdeni"
+   9      =1  #define cAction_Timeout          2  // Main:     Process driver
+  10      =1  #define cAction_Timeout2         3  // Main:     Process driver 2
+  11      =1  #define cEEP_WriteData           4  // EEPROM:   Sekvencni zapis dat
+  12      =1  #define cEEP_Clear               5  // EEPROM:   Sekvencni vymazani
+  13      =1  #define cHCOM_IntUp              6  // HCOM:     Konec vysilani bez preruseni
+  14      =1  #define cLoopTest                7  // LoopTest: Test hlavni smycky
+  15      =1  #define cLED_Timer               8  // LED:      Rizeni doby svitu signalizacnich LED
+  16      =1  #define cSYNCH                   9  // SYNCH:    Synchronni komunikace
+  17      =1  // ----------------------------
+  18      =1  #define No_Timeouts             10  // Pocet timeoutu celkem
+  19      =1  
+  39          #include "time.h"
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void Time_SetTime(uchar Hour,uchar Min,uchar Sec);
+   5      =1  extern void Time_SetDate(uchar Year,uchar Month,uchar Day);
+   6      =1  extern uchar Time_GetHour();
+   7      =1  extern uchar Time_GetMin();
+   8      =1  extern uchar Time_GetSec();
+   9      =1  extern uchar Time_GetYear();
+  10      =1  extern uchar Time_GetMonth();
+  11      =1  extern uchar Time_GetDay();
+  12      =1  extern void Time_SetHour(uchar Hour);
+  13      =1  extern void Time_SetMin(uchar Min);
+  14      =1  extern void Time_SetSec(uchar Sec);
+  15      =1  extern void Time_SetYear(uchar Year);
+  16      =1  extern void Time_SetMonth(uchar Month);
+  17      =1  extern void Time_SetDay(uchar Day);
+  18      =1  extern void Time_Init();
+  19      =1  
+  20      =1  extern bit  bTimeout_1Sec;
+  21      =1  extern void Timeout_Set(uchar Counter, uint Time);
+  22      =1  extern bit  Timeout(uchar Counter);
+  23      =1  extern uint Timeout_Value(uchar Counter);
+  24      =1  
+  40          
+  41          //#define DEBUG_MODE
+  42          
+  43          #ifdef DEBUG_MODE
+              #include "leds.h"
+              #endif
+  46          
+  47          #define uchar unsigned char
+  48          #define uint unsigned int
+  49          
+  50          /*-------------------------------------------------------------------------*/
+  51          #define cRECBUFSIZE 64
+  52          #define cSNDBUFSIZE 32
+  53          #define cSDELAY     50
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 5   
+
+  54          
+  55          /*-------------------------------------------------------------------------*/
+  56          uchar xdata  HCOM_RECBUF[cRECBUFSIZE];
+  57          uchar data   HCOM_RW_IX;
+  58          uchar data   HCOM_RR_IX;
+  59          uchar data   HCOM_RBIB;
+  60          uchar data   HCOM_RByte;
+  61          bit          bHCOM_RIBUF;
+  62          bit          bHCOM_RB_Overflow;   // Flag preteceni prijimaciho bufferu
+  63          
+  64          /*-------------------------------------------------------------------------*/
+  65          uchar xdata  HCOM_SNDBUF[cSNDBUFSIZE];
+  66          uchar data   HCOM_SW_IX;
+  67          uchar data   HCOM_SR_IX;
+  68          uchar data   HCOM_SBIB;
+  69          uchar data   HCOM_SDELAY;
+  70          bit          bHCOM_StartSend;
+  71          bit          bHCOM_SB_Overflow;   // Flag preteceni vysilaciho bufferu
+  72          
+  73          bit          bHCOM_PtrDataSend;   // Flag pro vysilani dat z pointeru
+  74          uchar* xdata HCOM_DataPtr;        // Pointer
+  75          uchar  xdata HCOM_MaxIndex;       // Maximum znaku na pointeru
+  76          uchar  xdata HCOM_PtrCharCount;   // Index na pointeru
+  77          
+  78          // ======================================================================= //
+  79          //             Interrupt - Zapis prichoziho znaku do recbuf                //
+  80          // ----------------------------------------------------------------------- //
+  81          #pragma NOAREGS
+  82          void SerialInterrupt() interrupt 4
+  83          {
+  84   1        if(RI)                                    // Pokud prijaty znak
+  85   1        { if(HCOM_RBIB < cRECBUFSIZE)             // Pokud neni RBUF plny
+  86   2          { LED_Stay(cLED_RD_HCOM);               // Signalizuj prijem
+  87   3            RI=0;                                 // Reset priznaku
+  88   3            #ifdef DEBUG_MODE
+                    LED2=~LED2;
+                    #endif
+  91   3            HCOM_RW_IX%=cRECBUFSIZE;              // Pretoc index, je-li na max.
+  92   3            HCOM_RECBUF[HCOM_RW_IX]=SBUF;         // Nacti znak z 232
+  93   3            HCOM_RW_IX++;                         // Posun index
+  94   3            HCOM_RBIB++;                          // Zvys pocet znaku v RBUF
+  95   3          } else bHCOM_RB_Overflow=1;             // Nastav flag preteceni bufferu
+  96   2        }
+  97   1      
+  98   1        if(HCOM_SBIB)                           // Pokud je znak v SndBuf
+  99   1        { if(TI)
+ 100   2          { LED_Stay(cLED_WR_HCOM);             // Signalizuj vysilani
+ 101   3            TI=0;
+ 102   3            bHCOM_StartSend=0;
+ 103   3            #ifdef DEBUG_MODE
+                    LED5=~LED5;
+                    #endif
+ 106   3            HCOM_SR_IX%=cSNDBUFSIZE;            // Pripadne pretoc index
+ 107   3            SBUF=HCOM_SNDBUF[HCOM_SR_IX];       // Odesli znak z sndbuf
+ 108   3            HCOM_SR_IX++;                       // Posun index
+ 109   3            HCOM_SBIB--;                        // Sniz pocet znaku v sndbuf
+ 110   3          }
+ 111   2        } else TI=0;                            // Pokud v SBUF neni znak, nuluj TI
+ 112   1      }
+ 113          #pragma AREGS
+ 114          
+ 115          
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 6   
+
+ 116          
+ 117          // Spusteni odpocitavani do nastaveni priznaku pro vysilani
+ 118          void HCOM_StartSend()
+ 119          { HCOM_SDELAY=cSDELAY;
+ 120   1        bHCOM_StartSend=1;
+ 121   1      }
+ 122          
+ 123          
+ 124          // Spusteni serioveho vysilani se zablokovanym prerusenim
+ 125          void HCOM_Start_NI_TXD()
+ 126          { LED_Stay(cLED_WR_HCOM);             // Signalizuj vysilani
+ 127   1        HCOM_StartSend();
+ 128   1        ES=0; TI=1;
+ 129   1      }
+ 130          
+ 131          // Konec serioveho vysilani se zablokovanym prerusenim
+ 132          void HCOM_End_NI_TXD()
+ 133          { Timeout_Set(cHCOM_IntUp,5); while(~TI) { if(Timeout(cHCOM_IntUp)) break; }
+ 134   1        Timeout_Set(cHCOM_IntUp,5); while(TI) { if(Timeout(cHCOM_IntUp)) break; }
+ 135   1        bHCOM_RIBUF=0;
+ 136   1        HCOM_RW_IX=0;
+ 137   1        HCOM_RR_IX=0;
+ 138   1        HCOM_RBIB=0;
+ 139   1        HCOM_RByte=0;
+ 140   1        HCOM_SW_IX=0;
+ 141   1        HCOM_SR_IX=0;
+ 142   1        HCOM_SBIB=0;
+ 143   1        TI=0;
+ 144   1        ES=1;
+ 145   1      }
+ 146          
+ 147          // Vyzvednuti znaku z recbuf
+ 148          void HCOM_PROC()
+ 149          { if(HCOM_RBIB)                           // Pokud je v RBUF znak
+ 150   1        { bHCOM_RIBUF=1;
+ 151   2          HCOM_RR_IX%=cRECBUFSIZE;              // Pripadne pretoc index
+ 152   2          HCOM_RByte=HCOM_RECBUF[HCOM_RR_IX];   // Nacti znak z rbuf
+ 153   2          HCOM_RR_IX++;                         // Posun index
+ 154   2          HCOM_RBIB--;                          // Sniz pocet znaku v rbuf
+ 155   2          #ifdef DEBUG_MODE
+                  LED4=~LED4;
+                  #endif
+ 158   2        } else bHCOM_RIBUF=0;
+ 159   1      
+ 160   1        if(bHCOM_StartSend)                     // Zacatek prenosu fronty
+ 161   1        { HCOM_SDELAY--;
+ 162   2          if(!HCOM_SDELAY) TI=1;
+ 163   2        }
+ 164   1      
+ 165   1        if((!HCOM_SBIB) && (TI) && (!HCOM_SDELAY)) TI=0; // Konec prenosu fronty
+ 166   1      
+ 167   1        // Vysilani dat z pointeru
+ 168   1        if(bHCOM_PtrDataSend)
+ 169   1        { LED_Stay(cLED_WR_HCOM);
+ 170   2          if((*HCOM_DataPtr) && (HCOM_PtrCharCount < HCOM_MaxIndex))
+ 171   2          { if(HCOM_SBIB < (cSNDBUFSIZE-1)) // Pokud je v SBUF volno...
+ 172   3            { HCOM_SW_IX%=cSNDBUFSIZE;       // Pretoc index, je-li na konci
+ 173   4              HCOM_SNDBUF[HCOM_SW_IX]=(*HCOM_DataPtr); // Zapis znak do sndbuf
+ 174   4              HCOM_SW_IX++;                  // Posun index
+ 175   4              if((!HCOM_SBIB) && (~TI)) HCOM_StartSend();
+ 176   4              HCOM_SBIB++;                   // Zvys pocet znaku v sndbuf
+ 177   4              HCOM_DataPtr++;                // Posun pointer
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 7   
+
+ 178   4              HCOM_PtrCharCount++;               // Posun pocitadlo znaku
+ 179   4            }
+ 180   3          }
+ 181   2          else bHCOM_PtrDataSend=0; // Konec vysilani
+ 182   2        }
+ 183   1      }
+ 184          
+ 185          
+ 186          // Spusteni odesilani dat z pointeru
+ 187          bit HCOM_SendPtr(uchar *Ptr, uchar MaxIndex)
+ 188          { if(~bHCOM_PtrDataSend)
+ 189   1        { HCOM_DataPtr=Ptr;          // Zkopiruj pointer
+ 190   2          HCOM_MaxIndex=MaxIndex;    // Zkopiruj maximalni pocet znaku
+ 191   2          HCOM_PtrCharCount=0;       // Nuluj pocitadlo znaku
+ 192   2          bHCOM_PtrDataSend=1;
+ 193   2          return(1);
+ 194   2        }
+ 195   1        else return(0);
+ 196   1      }
+ 197          
+ 198          
+ 199          // Zapis znaku do vysilaci fronty
+ 200          bit HCOM_WriteChar(uchar Ch)
+ 201          { if(HCOM_SBIB < (cSNDBUFSIZE-1))
+ 202   1        { HCOM_SW_IX%=cSNDBUFSIZE;       // Pretoc index, je-li na max
+ 203   2          HCOM_SNDBUF[HCOM_SW_IX]=Ch;    // Zapis znak do sndbuf
+ 204   2          HCOM_SW_IX++;                  // Posun index
+ 205   2          if((!HCOM_SBIB) && (~TI)) HCOM_StartSend();
+ 206   2          HCOM_SBIB++;                   // Zvys pocet znaku v sndbuf
+ 207   2          return(1);
+ 208   2        }
+ 209   1        else
+ 210   1        { bHCOM_SB_Overflow=1;             // Nastav flag preteceni bufferu
+ 211   2          return(0);
+ 212   2        }
+ 213   1      }
+ 214          
+ 215          // Zapis retezce do vysilaci fronty
+ 216          void HCOM_WriteString(uchar * Text, uchar MaxSize)
+ 217          { uchar i;
+ 218   1      
+ 219   1        for(i=0; (Text[i] && (i<MaxSize)); i++)
+ 220   1        { if(~HCOM_WriteChar(Text[i])) break;
+ 221   2        }
+ 222   1      }
+ 223          
+ 224          
+ 225          
+ 226          void HCOM_Init()
+ 227          { uchar i;
+ 228   1      
+ 229   1        bHCOM_RIBUF=0;
+ 230   1        HCOM_RW_IX=0;
+ 231   1        HCOM_RR_IX=0;
+ 232   1        HCOM_RBIB=0;
+ 233   1        HCOM_RByte=0;
+ 234   1        for(i=0; i<sizeof(HCOM_RECBUF); i++) HCOM_RECBUF[i]=0;
+ 235   1        bHCOM_RB_Overflow=0;
+ 236   1      
+ 237   1        HCOM_SW_IX=0;
+ 238   1        HCOM_SR_IX=0;
+ 239   1        HCOM_SBIB=0;
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 8   
+
+ 240   1        bHCOM_StartSend=0;
+ 241   1        HCOM_SDELAY=cSDELAY;
+ 242   1        for(i=0; i<sizeof(HCOM_SNDBUF); i++) HCOM_SNDBUF[i]=0;
+ 243   1        bHCOM_SB_Overflow=0;
+ 244   1      
+ 245   1        bHCOM_PtrDataSend=0;
+ 246   1        HCOM_DataPtr = 0;
+ 247   1        HCOM_MaxIndex=0;
+ 248   1      }
+ 249          
+ 250          
+ 251          bit HCOM_Get_Var(uint VarID)
+ 252          { switch(VarID)
+ 253   1        { case cID_HCOM_Init:    return(0);
+ 254   2          case cID_HCOM_SendPtr: return(bHCOM_PtrDataSend);
+ 255   2        }
+ 256   1      }
+ 257          
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 9   
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION SerialInterrupt (BEGIN)
+0000 C0E0              PUSH    ACC
+0002 C0F0              PUSH    B
+0004 C083              PUSH    DPH
+0006 C082              PUSH    DPL
+0008 C0D0              PUSH    PSW
+000A E8                MOV     A,R0
+000B C0E0              PUSH    ACC
+000D E9                MOV     A,R1
+000E C0E0              PUSH    ACC
+0010 EA                MOV     A,R2
+0011 C0E0              PUSH    ACC
+0013 EB                MOV     A,R3
+0014 C0E0              PUSH    ACC
+0016 EC                MOV     A,R4
+0017 C0E0              PUSH    ACC
+0019 ED                MOV     A,R5
+001A C0E0              PUSH    ACC
+001C EE                MOV     A,R6
+001D C0E0              PUSH    ACC
+001F EF                MOV     A,R7
+0020 C0E0              PUSH    ACC
+                                           ; SOURCE LINE # 82
+                                           ; SOURCE LINE # 84
+0022 309827            JNB     RI,?C0001
+                                           ; SOURCE LINE # 85
+0025 E500        R     MOV     A,HCOM_RBIB
+0027 C3                CLR     C
+0028 9440              SUBB    A,#040H
+002A 501E              JNC     ?C0002
+                                           ; SOURCE LINE # 86
+002C E4                CLR     A
+002D FF                MOV     R7,A
+002E 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 87
+0031 C298              CLR     RI
+                                           ; SOURCE LINE # 91
+0033 53003F      R     ANL     HCOM_RW_IX,#03FH
+                                           ; SOURCE LINE # 92
+0036 7400        R     MOV     A,#LOW HCOM_RECBUF
+0038 2500        R     ADD     A,HCOM_RW_IX
+003A F582              MOV     DPL,A
+003C E4                CLR     A
+003D 3400        R     ADDC    A,#HIGH HCOM_RECBUF
+003F F583              MOV     DPH,A
+0041 E599              MOV     A,SBUF
+0043 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 93
+0044 0500        R     INC     HCOM_RW_IX
+                                           ; SOURCE LINE # 94
+0046 0500        R     INC     HCOM_RBIB
+                                           ; SOURCE LINE # 95
+0048 8002              SJMP    ?C0001
+004A         ?C0002:
+004A D200        R     SETB    bHCOM_RB_Overflow
+                                           ; SOURCE LINE # 96
+004C         ?C0001:
+                                           ; SOURCE LINE # 98
+004C E500        R     MOV     A,HCOM_SBIB
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 10  
+
+004E 6023              JZ      ?C0004
+                                           ; SOURCE LINE # 99
+0050 309922            JNB     TI,?C0007
+                                           ; SOURCE LINE # 100
+0053 7F01              MOV     R7,#01H
+0055 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 101
+0058 C299              CLR     TI
+                                           ; SOURCE LINE # 102
+005A C200        R     CLR     bHCOM_StartSend
+                                           ; SOURCE LINE # 106
+005C 53001F      R     ANL     HCOM_SR_IX,#01FH
+                                           ; SOURCE LINE # 107
+005F 7400        R     MOV     A,#LOW HCOM_SNDBUF
+0061 2500        R     ADD     A,HCOM_SR_IX
+0063 F582              MOV     DPL,A
+0065 E4                CLR     A
+0066 3400        R     ADDC    A,#HIGH HCOM_SNDBUF
+0068 F583              MOV     DPH,A
+006A E0                MOVX    A,@DPTR
+006B F599              MOV     SBUF,A
+                                           ; SOURCE LINE # 108
+006D 0500        R     INC     HCOM_SR_IX
+                                           ; SOURCE LINE # 109
+006F 1500        R     DEC     HCOM_SBIB
+                                           ; SOURCE LINE # 110
+                                           ; SOURCE LINE # 111
+0071 8002              SJMP    ?C0007
+0073         ?C0004:
+0073 C299              CLR     TI
+                                           ; SOURCE LINE # 112
+0075         ?C0007:
+0075 D0E0              POP     ACC
+0077 FF                MOV     R7,A
+0078 D0E0              POP     ACC
+007A FE                MOV     R6,A
+007B D0E0              POP     ACC
+007D FD                MOV     R5,A
+007E D0E0              POP     ACC
+0080 FC                MOV     R4,A
+0081 D0E0              POP     ACC
+0083 FB                MOV     R3,A
+0084 D0E0              POP     ACC
+0086 FA                MOV     R2,A
+0087 D0E0              POP     ACC
+0089 F9                MOV     R1,A
+008A D0E0              POP     ACC
+008C F8                MOV     R0,A
+008D D0D0              POP     PSW
+008F D082              POP     DPL
+0091 D083              POP     DPH
+0093 D0F0              POP     B
+0095 D0E0              POP     ACC
+0097 32                RETI    
+             ; FUNCTION SerialInterrupt (END)
+
+             ; FUNCTION HCOM_StartSend (BEGIN)
+                                           ; SOURCE LINE # 118
+                                           ; SOURCE LINE # 119
+0000 750032      R     MOV     HCOM_SDELAY,#032H
+                                           ; SOURCE LINE # 120
+0003 D200        R     SETB    bHCOM_StartSend
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 11  
+
+                                           ; SOURCE LINE # 121
+0005 22                RET     
+             ; FUNCTION HCOM_StartSend (END)
+
+             ; FUNCTION HCOM_Start_NI_TXD (BEGIN)
+                                           ; SOURCE LINE # 125
+                                           ; SOURCE LINE # 126
+0000 7F01              MOV     R7,#01H
+0002 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 127
+0005 120000      R     LCALL   HCOM_StartSend
+                                           ; SOURCE LINE # 128
+0008 C2AC              CLR     ES
+000A D299              SETB    TI
+                                           ; SOURCE LINE # 129
+000C 22                RET     
+             ; FUNCTION HCOM_Start_NI_TXD (END)
+
+             ; FUNCTION HCOM_End_NI_TXD (BEGIN)
+                                           ; SOURCE LINE # 132
+                                           ; SOURCE LINE # 133
+0000 7D05              MOV     R5,#05H
+0002 7C00              MOV     R4,#00H
+0004 7F06              MOV     R7,#06H
+0006 120000      E     LCALL   _Timeout_Set
+0009         ?C0010:
+0009 A299              MOV     C,TI
+000B B3                CPL     C
+000C 5007              JNC     ?C0011
+000E 7F06              MOV     R7,#06H
+0010 120000      E     LCALL   _Timeout
+0013 50F4              JNC     ?C0010
+0015         ?C0011:
+                                           ; SOURCE LINE # 134
+0015 7D05              MOV     R5,#05H
+0017 7C00              MOV     R4,#00H
+0019 7F06              MOV     R7,#06H
+001B 120000      E     LCALL   _Timeout_Set
+001E         ?C0013:
+001E 309907            JNB     TI,?C0014
+0021 7F06              MOV     R7,#06H
+0023 120000      E     LCALL   _Timeout
+0026 50F6              JNC     ?C0013
+0028         ?C0014:
+                                           ; SOURCE LINE # 135
+0028 C200        R     CLR     bHCOM_RIBUF
+                                           ; SOURCE LINE # 136
+002A E4                CLR     A
+002B F500        R     MOV     HCOM_RW_IX,A
+                                           ; SOURCE LINE # 137
+002D F500        R     MOV     HCOM_RR_IX,A
+                                           ; SOURCE LINE # 138
+002F F500        R     MOV     HCOM_RBIB,A
+                                           ; SOURCE LINE # 139
+0031 F500        R     MOV     HCOM_RByte,A
+                                           ; SOURCE LINE # 140
+0033 F500        R     MOV     HCOM_SW_IX,A
+                                           ; SOURCE LINE # 141
+0035 F500        R     MOV     HCOM_SR_IX,A
+                                           ; SOURCE LINE # 142
+0037 F500        R     MOV     HCOM_SBIB,A
+                                           ; SOURCE LINE # 143
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 12  
+
+0039 C299              CLR     TI
+                                           ; SOURCE LINE # 144
+003B D2AC              SETB    ES
+                                           ; SOURCE LINE # 145
+003D 22                RET     
+             ; FUNCTION HCOM_End_NI_TXD (END)
+
+             ; FUNCTION HCOM_PROC (BEGIN)
+                                           ; SOURCE LINE # 148
+                                           ; SOURCE LINE # 149
+0000 E500        R     MOV     A,HCOM_RBIB
+0002 6019              JZ      ?C0017
+                                           ; SOURCE LINE # 150
+0004 D200        R     SETB    bHCOM_RIBUF
+                                           ; SOURCE LINE # 151
+0006 53003F      R     ANL     HCOM_RR_IX,#03FH
+                                           ; SOURCE LINE # 152
+0009 7400        R     MOV     A,#LOW HCOM_RECBUF
+000B 2500        R     ADD     A,HCOM_RR_IX
+000D F582              MOV     DPL,A
+000F E4                CLR     A
+0010 3400        R     ADDC    A,#HIGH HCOM_RECBUF
+0012 F583              MOV     DPH,A
+0014 E0                MOVX    A,@DPTR
+0015 F500        R     MOV     HCOM_RByte,A
+                                           ; SOURCE LINE # 153
+0017 0500        R     INC     HCOM_RR_IX
+                                           ; SOURCE LINE # 154
+0019 1500        R     DEC     HCOM_RBIB
+                                           ; SOURCE LINE # 158
+001B 8002              SJMP    ?C0018
+001D         ?C0017:
+001D C200        R     CLR     bHCOM_RIBUF
+001F         ?C0018:
+                                           ; SOURCE LINE # 160
+001F 300005      R     JNB     bHCOM_StartSend,?C0019
+                                           ; SOURCE LINE # 161
+0022 D50002      R     DJNZ    HCOM_SDELAY,?C0019
+                                           ; SOURCE LINE # 162
+0025 D299              SETB    TI
+                                           ; SOURCE LINE # 163
+0027         ?C0019:
+                                           ; SOURCE LINE # 165
+0027 E500        R     MOV     A,HCOM_SBIB
+0029 7009              JNZ     ?C0021
+002B 309906            JNB     TI,?C0021
+002E E500        R     MOV     A,HCOM_SDELAY
+0030 7002              JNZ     ?C0021
+0032 C299              CLR     TI
+0034         ?C0021:
+                                           ; SOURCE LINE # 168
+0034 30005D      R     JNB     bHCOM_PtrDataSend,?C0027
+                                           ; SOURCE LINE # 169
+0037 7F01              MOV     R7,#01H
+0039 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 170
+003C 900000      R     MOV     DPTR,#HCOM_DataPtr
+003F E0                MOVX    A,@DPTR
+0040 FB                MOV     R3,A
+0041 A3                INC     DPTR
+0042 E0                MOVX    A,@DPTR
+0043 FA                MOV     R2,A
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 13  
+
+0044 A3                INC     DPTR
+0045 E0                MOVX    A,@DPTR
+0046 F9                MOV     R1,A
+0047 120000      E     LCALL   ?C?CLDPTR
+004A FF                MOV     R7,A
+004B 6045              JZ      ?C0023
+004D 900000      R     MOV     DPTR,#HCOM_MaxIndex
+0050 E0                MOVX    A,@DPTR
+0051 FE                MOV     R6,A
+0052 900000      R     MOV     DPTR,#HCOM_PtrCharCount
+0055 E0                MOVX    A,@DPTR
+0056 C3                CLR     C
+0057 9E                SUBB    A,R6
+0058 5038              JNC     ?C0023
+                                           ; SOURCE LINE # 171
+005A E500        R     MOV     A,HCOM_SBIB
+005C C3                CLR     C
+005D 941F              SUBB    A,#01FH
+005F 5033              JNC     ?C0027
+                                           ; SOURCE LINE # 172
+0061 53001F      R     ANL     HCOM_SW_IX,#01FH
+                                           ; SOURCE LINE # 173
+0064 7400        R     MOV     A,#LOW HCOM_SNDBUF
+0066 2500        R     ADD     A,HCOM_SW_IX
+0068 F582              MOV     DPL,A
+006A E4                CLR     A
+006B 3400        R     ADDC    A,#HIGH HCOM_SNDBUF
+006D F583              MOV     DPH,A
+006F EF                MOV     A,R7
+0070 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 174
+0071 0500        R     INC     HCOM_SW_IX
+                                           ; SOURCE LINE # 175
+0073 E500        R     MOV     A,HCOM_SBIB
+0075 7008              JNZ     ?C0025
+0077 A299              MOV     C,TI
+0079 B3                CPL     C
+007A 5003              JNC     ?C0025
+007C 120000      R     LCALL   HCOM_StartSend
+007F         ?C0025:
+                                           ; SOURCE LINE # 176
+007F 0500        R     INC     HCOM_SBIB
+                                           ; SOURCE LINE # 177
+0081 900000      R     MOV     DPTR,#HCOM_DataPtr+01H
+0084 E4                CLR     A
+0085 75F001            MOV     B,#01H
+0088 120000      E     LCALL   ?C?IILDX
+                                           ; SOURCE LINE # 178
+008B 900000      R     MOV     DPTR,#HCOM_PtrCharCount
+008E E0                MOVX    A,@DPTR
+008F 04                INC     A
+0090 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 179
+                                           ; SOURCE LINE # 180
+0091 22                RET     
+0092         ?C0023:
+                                           ; SOURCE LINE # 181
+0092 C200        R     CLR     bHCOM_PtrDataSend
+                                           ; SOURCE LINE # 182
+                                           ; SOURCE LINE # 183
+0094         ?C0027:
+0094 22                RET     
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 14  
+
+             ; FUNCTION HCOM_PROC (END)
+
+             ; FUNCTION _HCOM_SendPtr (BEGIN)
+;---- Variable 'Ptr' assigned to Register 'R1/R2/R3' ----
+;---- Variable 'MaxIndex' assigned to Register 'R5' ----
+                                           ; SOURCE LINE # 187
+                                           ; SOURCE LINE # 188
+0000 A200        R     MOV     C,bHCOM_PtrDataSend
+0002 B3                CPL     C
+0003 5018              JNC     ?C0028
+                                           ; SOURCE LINE # 189
+0005 900000      R     MOV     DPTR,#HCOM_DataPtr
+0008 EB                MOV     A,R3
+0009 F0                MOVX    @DPTR,A
+000A A3                INC     DPTR
+000B EA                MOV     A,R2
+000C F0                MOVX    @DPTR,A
+000D A3                INC     DPTR
+000E E9                MOV     A,R1
+000F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 190
+0010 900000      R     MOV     DPTR,#HCOM_MaxIndex
+0013 ED                MOV     A,R5
+0014 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 191
+0015 E4                CLR     A
+0016 900000      R     MOV     DPTR,#HCOM_PtrCharCount
+0019 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 192
+001A D200        R     SETB    bHCOM_PtrDataSend
+                                           ; SOURCE LINE # 193
+001C 22                RET     
+                                           ; SOURCE LINE # 194
+001D         ?C0028:
+                                           ; SOURCE LINE # 195
+001D C3                CLR     C
+                                           ; SOURCE LINE # 196
+001E         ?C0029:
+001E 22                RET     
+             ; FUNCTION _HCOM_SendPtr (END)
+
+             ; FUNCTION _HCOM_WriteChar (BEGIN)
+;---- Variable 'Ch' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 200
+                                           ; SOURCE LINE # 201
+0000 E500        R     MOV     A,HCOM_SBIB
+0002 C3                CLR     C
+0003 941F              SUBB    A,#01FH
+0005 5022              JNC     ?C0031
+                                           ; SOURCE LINE # 202
+0007 53001F      R     ANL     HCOM_SW_IX,#01FH
+                                           ; SOURCE LINE # 203
+000A 7400        R     MOV     A,#LOW HCOM_SNDBUF
+000C 2500        R     ADD     A,HCOM_SW_IX
+000E F582              MOV     DPL,A
+0010 E4                CLR     A
+0011 3400        R     ADDC    A,#HIGH HCOM_SNDBUF
+0013 F583              MOV     DPH,A
+0015 EF                MOV     A,R7
+0016 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 204
+0017 0500        R     INC     HCOM_SW_IX
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 15  
+
+                                           ; SOURCE LINE # 205
+0019 E500        R     MOV     A,HCOM_SBIB
+001B 7008              JNZ     ?C0032
+001D A299              MOV     C,TI
+001F B3                CPL     C
+0020 5003              JNC     ?C0032
+0022 120000      R     LCALL   HCOM_StartSend
+0025         ?C0032:
+                                           ; SOURCE LINE # 206
+0025 0500        R     INC     HCOM_SBIB
+                                           ; SOURCE LINE # 207
+0027 D3                SETB    C
+0028 22                RET     
+                                           ; SOURCE LINE # 208
+0029         ?C0031:
+                                           ; SOURCE LINE # 210
+0029 D200        R     SETB    bHCOM_SB_Overflow
+                                           ; SOURCE LINE # 211
+002B C3                CLR     C
+                                           ; SOURCE LINE # 212
+                                           ; SOURCE LINE # 213
+002C         ?C0033:
+002C 22                RET     
+             ; FUNCTION _HCOM_WriteChar (END)
+
+             ; FUNCTION _HCOM_WriteString (BEGIN)
+0000 8B00        R     MOV     Text,R3
+0002 8A00        R     MOV     Text+01H,R2
+0004 8900        R     MOV     Text+02H,R1
+;---- Variable 'MaxSize' assigned to Register 'R5' ----
+                                           ; SOURCE LINE # 216
+                                           ; SOURCE LINE # 217
+                                           ; SOURCE LINE # 219
+;---- Variable 'i' assigned to Register 'R6' ----
+0006 E4                CLR     A
+0007 FE                MOV     R6,A
+0008         ?C0035:
+0008 AB00        R     MOV     R3,Text
+000A AA00        R     MOV     R2,Text+01H
+000C A900        R     MOV     R1,Text+02H
+000E 8E82              MOV     DPL,R6
+0010 758300            MOV     DPH,#00H
+0013 120000      E     LCALL   ?C?CLDOPTR
+0016 FF                MOV     R7,A
+0017 600E              JZ      ?C0039
+0019 EE                MOV     A,R6
+001A C3                CLR     C
+001B 9D                SUBB    A,R5
+001C 5009              JNC     ?C0039
+                                           ; SOURCE LINE # 220
+001E 120000      R     LCALL   _HCOM_WriteChar
+0021 B3                CPL     C
+0022 4003              JC      ?C0039
+                                           ; SOURCE LINE # 221
+0024         ?C0037:
+0024 0E                INC     R6
+0025 80E1              SJMP    ?C0035
+                                           ; SOURCE LINE # 222
+0027         ?C0039:
+0027 22                RET     
+             ; FUNCTION _HCOM_WriteString (END)
+
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 16  
+
+             ; FUNCTION HCOM_Init (BEGIN)
+                                           ; SOURCE LINE # 226
+                                           ; SOURCE LINE # 227
+                                           ; SOURCE LINE # 229
+0000 C200        R     CLR     bHCOM_RIBUF
+                                           ; SOURCE LINE # 230
+0002 E4                CLR     A
+0003 F500        R     MOV     HCOM_RW_IX,A
+                                           ; SOURCE LINE # 231
+0005 F500        R     MOV     HCOM_RR_IX,A
+                                           ; SOURCE LINE # 232
+0007 F500        R     MOV     HCOM_RBIB,A
+                                           ; SOURCE LINE # 233
+0009 F500        R     MOV     HCOM_RByte,A
+                                           ; SOURCE LINE # 234
+;---- Variable 'i' assigned to Register 'R7' ----
+000B FF                MOV     R7,A
+000C         ?C0040:
+000C 7F40              MOV     R7,#040H
+000E 900000      R     MOV     DPTR,#HCOM_RECBUF
+0011 E4                CLR     A
+0012         ?C0051:
+0012 F0                MOVX    @DPTR,A
+0013 A3                INC     DPTR
+0014 DFFC              DJNZ    R7,?C0051
+0016         ?C0041:
+                                           ; SOURCE LINE # 235
+0016 C200        R     CLR     bHCOM_RB_Overflow
+                                           ; SOURCE LINE # 237
+0018 E4                CLR     A
+0019 F500        R     MOV     HCOM_SW_IX,A
+                                           ; SOURCE LINE # 238
+001B F500        R     MOV     HCOM_SR_IX,A
+                                           ; SOURCE LINE # 239
+001D F500        R     MOV     HCOM_SBIB,A
+                                           ; SOURCE LINE # 240
+001F C200        R     CLR     bHCOM_StartSend
+                                           ; SOURCE LINE # 241
+0021 750032      R     MOV     HCOM_SDELAY,#032H
+                                           ; SOURCE LINE # 242
+0024 FF                MOV     R7,A
+0025         ?C0043:
+0025 7F20              MOV     R7,#020H
+0027 900000      R     MOV     DPTR,#HCOM_SNDBUF
+002A E4                CLR     A
+002B         ?C0052:
+002B F0                MOVX    @DPTR,A
+002C A3                INC     DPTR
+002D DFFC              DJNZ    R7,?C0052
+002F         ?C0044:
+                                           ; SOURCE LINE # 243
+002F C200        R     CLR     bHCOM_SB_Overflow
+                                           ; SOURCE LINE # 245
+0031 C200        R     CLR     bHCOM_PtrDataSend
+                                           ; SOURCE LINE # 246
+0033 900000      R     MOV     DPTR,#HCOM_DataPtr
+0036 E4                CLR     A
+0037 F0                MOVX    @DPTR,A
+0038 A3                INC     DPTR
+0039 F0                MOVX    @DPTR,A
+003A A3                INC     DPTR
+003B F0                MOVX    @DPTR,A
+C51 COMPILER V6.12  HCOM_DRV                                                               10/23/2005 15:48:41 PAGE 17  
+
+                                           ; SOURCE LINE # 247
+003C 900000      R     MOV     DPTR,#HCOM_MaxIndex
+003F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 248
+0040 22                RET     
+             ; FUNCTION HCOM_Init (END)
+
+             ; FUNCTION _HCOM_Get_Var (BEGIN)
+;---- Variable 'VarID' assigned to Register 'R6/R7' ----
+                                           ; SOURCE LINE # 251
+                                           ; SOURCE LINE # 252
+0000 EE                MOV     A,R6
+0001 700C              JNZ     ?C0049
+0003 EF                MOV     A,R7
+0004 24FE              ADD     A,#0FEH
+0006 6005              JZ      ?C0050
+0008 04                INC     A
+0009 7004              JNZ     ?C0049
+                                           ; SOURCE LINE # 253
+000B         ?C0048:
+000B C3                CLR     C
+000C 22                RET     
+                                           ; SOURCE LINE # 254
+000D         ?C0050:
+000D A200        R     MOV     C,bHCOM_PtrDataSend
+                                           ; SOURCE LINE # 255
+                                           ; SOURCE LINE # 256
+000F         ?C0049:
+000F 22                RET     
+             ; FUNCTION _HCOM_Get_Var (END)
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    579    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    101    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      8       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      5    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

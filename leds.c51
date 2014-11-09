@@ -1,0 +1,123 @@
+//-------------------------------------------------------------------------//
+/////////////////////////////////////////////////////////////////////////////
+// +---------------------------------------------------------------------+ //
+// |                             LEDs driver                             | //
+// |                              ---------                              | //
+// |                       Verze 1.01 Build 051002                       | //
+// |                         Tomas Hujer (c) 2005                        | //
+// +---------------------------------------------------------------------+ //
+// | Driver signalizacnich LED                                           | //
+// +---------------------------------------------------------------------+ //
+/////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------//
+#define uchar unsigned char
+#define uint unsigned int
+
+#include <reg52.h>
+#include <stdio.h>
+#include "leds.k"
+#include "pins.h"
+#include "time.h"
+#include "time_def.k"
+
+uchar xdata LED0_time;
+uchar xdata LED1_time;
+uchar xdata LED2_time;
+uchar xdata LED3_time;
+uchar xdata LED4_time;
+uchar xdata LED5_time;
+uchar xdata LED6_time;
+uchar xdata LED7_time;
+
+
+void LED_ON(uchar LED_ID)
+{ switch(LED_ID)
+  { case cLED0: pin_LED0=0; break;
+    case cLED1: pin_LED1=0; break;
+    case cLED2: pin_LED2=0; break;
+    case cLED3: pin_LED3=0; break;
+    case cLED4: pin_LED4=0; break;
+    case cLED5: pin_LED5=0; break;
+    case cLED6: pin_LED6=0; break;
+    case cLED7: pin_LED7=0; break;
+  }
+}
+
+
+void LED_OFF(uchar LED_ID)
+{ switch(LED_ID)
+  { case cLED0: pin_LED0=1; break;
+    case cLED1: pin_LED1=1; break;
+    case cLED2: pin_LED2=1; break;
+    case cLED3: pin_LED3=1; break;
+    case cLED4: pin_LED4=1; break;
+    case cLED5: pin_LED5=1; break;
+    case cLED6: pin_LED6=0; break;
+    case cLED7: pin_LED7=0; break;
+  }
+}
+
+
+void LED_Stay(uchar LED_ID)
+{ switch(LED_ID)
+  { case cLED0: LED0_time=cLED_StayTime; pin_LED0=0; break;
+    case cLED1: LED1_time=cLED_StayTime; pin_LED1=0; break;
+    case cLED2: LED2_time=cLED_StayTime; pin_LED2=0; break;
+    case cLED3: LED3_time=cLED_StayTime; pin_LED3=0; break;
+    case cLED4: LED4_time=cLED_StayTime; pin_LED4=0; break;
+    case cLED5: LED5_time=cLED_StayTime; pin_LED5=0; break;
+    case cLED6: LED6_time=cLED_StayTime; pin_LED6=0; break;
+    case cLED7: LED7_time=cLED_StayTime; pin_LED7=0; break;
+  }
+}
+
+
+void LED_Init()
+{ pin_LED0=1;
+  pin_LED1=1;
+  pin_LED2=1;
+  pin_LED3=1;
+  pin_LED4=1;
+  pin_LED5=1;
+  pin_LED6=1;
+  pin_LED7=1;
+  LED0_time=0;
+  LED1_time=0;
+  LED2_time=0;
+  LED3_time=0;
+  LED4_time=0;
+  LED5_time=0;
+  LED6_time=0;
+  LED7_time=0;
+  Timeout_Set(cLED_Timer, 100);
+}
+
+
+void LED_Proc()
+{ if(Timeout(cLED_Timer))
+  { if(LED0_time) { LED0_time--; if(!LED0_time) pin_LED0=1;  }
+    if(LED1_time) { LED1_time--; if(!LED1_time) pin_LED1=1;  }
+    if(LED2_time) { LED2_time--; if(!LED2_time) pin_LED2=1;  }
+    if(LED3_time) { LED3_time--; if(!LED3_time) pin_LED3=1;  }
+    if(LED4_time) { LED4_time--; if(!LED4_time) pin_LED4=1;  }
+    if(LED5_time) { LED5_time--; if(!LED5_time) pin_LED5=1;  }
+    if(LED6_time) { LED6_time--; if(!LED6_time) pin_LED6=1;  }
+    if(LED7_time) { LED7_time--; if(!LED7_time) pin_LED7=1;  }
+    Timeout_Set(cLED_Timer, 10);
+  }
+}
+
+
+uchar LED_GetStayTime(uchar LED_ID)
+{ switch(LED_ID)
+  { case cLED0: return(LED0_time); break;
+    case cLED1: return(LED1_time); break;
+    case cLED2: return(LED2_time); break;
+    case cLED3: return(LED3_time); break;
+    case cLED4: return(LED4_time); break;
+    case cLED5: return(LED5_time); break;
+    case cLED6: return(LED6_time); break;
+    case cLED7: return(LED7_time); break;
+  }
+}
+

@@ -1,0 +1,893 @@
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE _MAIN
+OBJECT MODULE PLACED IN _main.OBJ
+COMPILER INVOKED BY: E:\PRGJAZ\CPU51\C51_v612\C51\BIN\C51.EXE _main.C51 DEBUG CODE LISTINCLUDE
+
+stmt level    source
+
+   1          
+   2          /*=========================================================================*/
+   3          #define SWName            "Data bridge RS232<-/->SYNCH"
+   4          #define SWVersion                "1.04"
+   5          #define SWLastCompile         "23/10/2005"
+   6          /*=========================================================================*/
+   7          
+   8          #include <reg52.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  REG52.H
+   3      =1  
+   4      =1  Header file for generic 80C52 and 80C32 microcontroller.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  /*  BYTE Registers  */
+  10      =1  sfr P0    = 0x80;
+  11      =1  sfr P1    = 0x90;
+  12      =1  sfr P2    = 0xA0;
+  13      =1  sfr P3    = 0xB0;
+  14      =1  sfr PSW   = 0xD0;
+  15      =1  sfr ACC   = 0xE0;
+  16      =1  sfr B     = 0xF0;
+  17      =1  sfr SP    = 0x81;
+  18      =1  sfr DPL   = 0x82;
+  19      =1  sfr DPH   = 0x83;
+  20      =1  sfr PCON  = 0x87;
+  21      =1  sfr TCON  = 0x88;
+  22      =1  sfr TMOD  = 0x89;
+  23      =1  sfr TL0   = 0x8A;
+  24      =1  sfr TL1   = 0x8B;
+  25      =1  sfr TH0   = 0x8C;
+  26      =1  sfr TH1   = 0x8D;
+  27      =1  sfr IE    = 0xA8;
+  28      =1  sfr IP    = 0xB8;
+  29      =1  sfr SCON  = 0x98;
+  30      =1  sfr SBUF  = 0x99;
+  31      =1  
+  32      =1  /*  8052 Extensions  */
+  33      =1  sfr T2CON  = 0xC8;
+  34      =1  sfr RCAP2L = 0xCA;
+  35      =1  sfr RCAP2H = 0xCB;
+  36      =1  sfr TL2    = 0xCC;
+  37      =1  sfr TH2    = 0xCD;
+  38      =1  
+  39      =1  
+  40      =1  /*  BIT Registers  */
+  41      =1  /*  PSW  */
+  42      =1  sbit CY    = PSW^7;
+  43      =1  sbit AC    = PSW^6;
+  44      =1  sbit F0    = PSW^5;
+  45      =1  sbit RS1   = PSW^4;
+  46      =1  sbit RS0   = PSW^3;
+  47      =1  sbit OV    = PSW^2;
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 2   
+
+  48      =1  sbit P     = PSW^0; //8052 only
+  49      =1  
+  50      =1  /*  TCON  */
+  51      =1  sbit TF1   = TCON^7;
+  52      =1  sbit TR1   = TCON^6;
+  53      =1  sbit TF0   = TCON^5;
+  54      =1  sbit TR0   = TCON^4;
+  55      =1  sbit IE1   = TCON^3;
+  56      =1  sbit IT1   = TCON^2;
+  57      =1  sbit IE0   = TCON^1;
+  58      =1  sbit IT0   = TCON^0;
+  59      =1  
+  60      =1  /*  IE  */
+  61      =1  sbit EA    = IE^7;
+  62      =1  sbit ET2   = IE^5; //8052 only
+  63      =1  sbit ES    = IE^4;
+  64      =1  sbit ET1   = IE^3;
+  65      =1  sbit EX1   = IE^2;
+  66      =1  sbit ET0   = IE^1;
+  67      =1  sbit EX0   = IE^0;
+  68      =1  
+  69      =1  /*  IP  */
+  70      =1  sbit PT2   = IP^5;
+  71      =1  sbit PS    = IP^4;
+  72      =1  sbit PT1   = IP^3;
+  73      =1  sbit PX1   = IP^2;
+  74      =1  sbit PT0   = IP^1;
+  75      =1  sbit PX0   = IP^0;
+  76      =1  
+  77      =1  /*  P3  */
+  78      =1  sbit RD    = P3^7;
+  79      =1  sbit WR    = P3^6;
+  80      =1  sbit T1    = P3^5;
+  81      =1  sbit T0    = P3^4;
+  82      =1  sbit INT1  = P3^3;
+  83      =1  sbit INT0  = P3^2;
+  84      =1  sbit TXD   = P3^1;
+  85      =1  sbit RXD   = P3^0;
+  86      =1  
+  87      =1  /*  SCON  */
+  88      =1  sbit SM0   = SCON^7;
+  89      =1  sbit SM1   = SCON^6;
+  90      =1  sbit SM2   = SCON^5;
+  91      =1  sbit REN   = SCON^4;
+  92      =1  sbit TB8   = SCON^3;
+  93      =1  sbit RB8   = SCON^2;
+  94      =1  sbit TI    = SCON^1;
+  95      =1  sbit RI    = SCON^0;
+  96      =1  
+  97      =1  /*  P1  */
+  98      =1  sbit T2EX  = P1^1; // 8052 only
+  99      =1  sbit T2    = P1^0; // 8052 only
+ 100      =1               
+ 101      =1  /*  T2CON  */
+ 102      =1  sbit TF2    = T2CON^7;
+ 103      =1  sbit EXF2   = T2CON^6;
+ 104      =1  sbit RCLK   = T2CON^5;
+ 105      =1  sbit TCLK   = T2CON^4;
+ 106      =1  sbit EXEN2  = T2CON^3;
+ 107      =1  sbit TR2    = T2CON^2;
+ 108      =1  sbit C_T2   = T2CON^1;
+ 109      =1  sbit CP_RL2 = T2CON^0;
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 3   
+
+   9          #include <stdio.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  STDIO.H
+   3      =1  
+   4      =1  Prototypes for standard I/O functions.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  #ifndef EOF
+  10      =1   #define EOF -1
+  11      =1  #endif
+  12      =1  
+  13      =1  #ifndef NULL
+  14      =1   #define NULL ((void *) 0)
+  15      =1  #endif
+  16      =1  
+  17      =1  #ifndef _SIZE_T
+  18      =1   #define _SIZE_T
+  19      =1   typedef unsigned int size_t;
+  20      =1  #endif
+  21      =1  
+  22      =1  #pragma SAVE
+  23      =1  #pragma REGPARMS
+  24      =1  extern char _getkey (void);
+  25      =1  extern char getchar (void);
+  26      =1  extern char ungetchar (char);
+  27      =1  extern char putchar (char);
+  28      =1  extern int printf   (const char *, ...);
+  29      =1  extern int sprintf  (char *, const char *, ...);
+  30      =1  extern int vprintf  (const char *, char *);
+  31      =1  extern int vsprintf (char *, const char *, char *);
+  32      =1  extern char *gets (char *, int n);
+  33      =1  extern int scanf (const char *, ...);
+  34      =1  extern int sscanf (char *, const char *, ...);
+  35      =1  extern int puts (const char *);
+  36      =1  
+  37      =1  #pragma RESTORE
+  10          #include "cpu_set.h"     // Nastaveni parametru procesoru a prostredi
+   1      =1  // ======================================================================= //
+   2      =1  //                    Hlavni inicializace a nastaveni                      //
+   3      =1  // ----------------------------------------------------------------------- //
+   4      =1  
+   5      =1  static void CPU_Init()
+   6      =1  { IE=0;          // Zakaz vsech preruseni
+   7   1  =1    //CKCON=0x01;    // 6 taktovy rezim (Pouze pro procesory TEMIC !!!)
+   8   1  =1    IP=0;          // Nulovani vsech priorit
+   9   1  =1  
+  10   1  =1    RS0=0;         // Nastaveni registrove banky 0
+  11   1  =1    RS1=0;         // Nastaveni registrove banky 0
+  12   1  =1  
+  13   1  =1    // Povolovaci bity preruseni (v IE)
+  14   1  =1    //ET0=0;         // Zakaz preruseni casovace 0
+  15   1  =1    //ET1=0;         // Zakaz preruseni casovace 1
+  16   1  =1    //ET2=0;         // Zakaz preruseni casovace 2
+  17   1  =1    //EX0=0;         // Zakaz vnejsiho preruseni 0
+  18   1  =1    //EX1=0;         // Zakaz vnejsiho preruseni 1
+  19   1  =1    //ES=0;          // Zakaz preruseni serialu
+  20   1  =1  
+  21   1  =1    SCON=0x50;     // Rizeni serioveho rozhrani SCON
+  22   1  =1    //REN=1;         // Povoleni prijmu serialu
+  23   1  =1    //RI=0;          // Nulovani priznaku prichoziho znaku
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 4   
+
+  24   1  =1    //TI=0;          // Nulovani priznaku odchoziho znaku
+  25   1  =1    //PS=1;          // Nastaveni vyssi priority preruseni serialu
+  26   1  =1    RXD=1;         // Nastaveni pocatecni urovne vstupu serialu
+  27   1  =1    TXD=1;         // Nastaveni pocatecni urovne vystupu
+  28   1  =1    TI=0;          // Povoleni (nastaveni priznaku) odesilani znaku
+  29   1  =1  
+  30   1  =1    TMOD=0x21;     // Nastaveni casovacu 1 a 0
+  31   1  =1  
+  32   1  =1    PCON&=0x7F;    // Power Controll - null SMODE (double speed)
+  33   1  =1  
+  34   1  =1    TL1=0xFB;      // Nastaveni default baud rate
+  35   1  =1    TH1=0xFB;      // Nastaveni default baud rate
+  36   1  =1    TR1=1;         // Start casovace 1
+  37   1  =1  
+  38   1  =1    // Timer 2
+  39   1  =1    RCAP2L=0xFF;   // Timer 2 control low
+  40   1  =1    RCAP2H=0xF3;   // Timer 2 control high
+  41   1  =1  
+  42   1  =1    T2CON=0;       // Timer control
+  43   1  =1    TR2=1;         // Start citace
+  44   1  =1    ET2=1;         // Timer 2 - povoleni preruseni
+  45   1  =1    TF2=0;
+  46   1  =1    //PT2=1;         // 1 = Nastaveni vyssi priority
+  47   1  =1  
+  48   1  =1    // Serial
+  49   1  =1    ES=1;          // Povoleni preruseni od serialu
+  50   1  =1    EA=1;          // Povoleni vsech preruseni
+  51   1  =1  
+  52   1  =1  }
+  53      =1  
+  54      =1  /*
+  55      =1  // ------------------------------------------------------------------------
+  56      =1  //
+  57      =1  //                  Specialni funkce bitu portu 3
+  58      =1  //                 +---------------------------------------+
+  59      =1  //                 ¦ RD ¦ WR ¦ T1 ¦ T0 ¦INT1¦INT0¦ TXD¦ RXD¦
+  60      =1  //                 +---------------------------------------+
+  61      =1  //                    ^    ^    ^    ^    ^    ^    ^    ^
+  62      =1  //                P3.7+    ¦    ¦    ¦    ¦    ¦    ¦    + P3.0
+  63      =1  //     Cteni z externi     ¦    ¦    ¦    ¦    ¦    ¦      Seriovy port-
+  64      =1  //     pameti dat          ¦    ¦    ¦    ¦    ¦    ¦      -vstupni data
+  65      =1  //                         ¦    ¦    ¦    ¦    ¦    ¦
+  66      =1  //                P3.6 ----+    ¦    ¦    ¦    ¦    +----- P3.1
+  67      =1  //     Zapis do externi         ¦    ¦    ¦    ¦           Seriovy port-
+  68      =1  //     pameti dat               ¦    ¦    ¦    ¦           vystupni data
+  69      =1  //                              ¦    ¦    ¦    ¦
+  70      =1  //                P3.5 ---------+    ¦    ¦    +---------- P3.2
+  71      =1  //     Vnejsi  impulsy               ¦    ¦                Vnejsi  zdroj
+  72      =1  //     citace c. 1                   ¦    ¦                preruseni 0
+  73      =1  //                                   ¦    ¦
+  74      =1  //                P3.4 --------------+    +--------------- P3.3
+  75      =1  //     Vnejsi  impulsy                                     Vnejsi  zdroj
+  76      =1  //     citace c. 0                                         preruseni 1
+  77      =1  //
+  78      =1  // ------------------------------------------------------------------------
+  79      =1  //                    Rizeni serioveho rozhrani SCON
+  80      =1  //                   +-------------------------------+
+  81      =1  //                   ¦SM0¦SM1¦SM2¦REN¦TB8¦RB8¦ TI¦ RI¦
+  82      =1  //                   +-------------------------------+
+  83      =1  //                     7   6   5   4   3   2   1   0
+  84      =1  //
+  85      =1  //     SM0..SM2 - mod funkce serioveho rozhrani
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 5   
+
+  86      =1  //     -------------------------------------------
+  87      =1  //      0    0    0    shift register   f osc/12
+  88      =1  //      0    1    1    8-bit UART       variable
+  89      =1  //      1    0    2    9-bit UART       f osc/64 nebo f osc/32
+  90      =1  //      1    1    3    9-bit UART       variable
+  91      =1  //
+  92      =1  //     REN      - povoleni prijmu
+  93      =1  //     RI       - preruseni po ukonceni prijmu
+  94      =1  //     TI       - preruseni po ukonceni vysilani
+  95      =1  //     RB8      - prijimany bit c. 8
+  96      =1  //     TB8      - vysilany bit c. 8
+  97      =1  //
+  98      =1  //
+  99      =1  // ------------------------------------------------------------------------
+ 100      =1  // TMOD
+ 101      =1  // --------------------
+ 102      =1  // Address = 89h
+ 103      =1  // Non bit addressable
+ 104      =1  // Reset value = 00h
+ 105      =1  // --------------------
+ 106      =1  //
+ 107      =1  //  <------ TIMER 0 ----------> <--------- TIMER 1 ------->
+ 108      =1  // +------+------+------+------+------+------+------+------+
+ 109      =1  // | GATE | C/~T |  M1  |  M0  | GATE | C/~T |  M1  |  M0  |
+ 110      =1  // +------+------+------+------+------+------+------+------+
+ 111      =1  //
+ 112      =1  //   Bit     Symbol      Function
+ 113      =1  //  ----------------------------------------------------------------------
+ 114      =1  //  TMOD.3/  GATE        Gating control when set. Timer/Counter "n" is
+ 115      =1  //  TMOD.7               enabled only while "~INTn" pin is high and
+ 116      =1  //                       "TRn" control pin is set. When cleared Timer "n"
+ 117      =1  //                       is enabled whenever "TRn" control bit is set.
+ 118      =1  //  TMOD.2/  C/~T        Timer or Counter Selector cleared for Timer
+ 119      =1  //  TMOD.6               operation (input from internal system clock.)
+ 120      =1  //                       Set for Counter operation (input from "Tn" input
+ 121      =1  //                       pin).
+ 122      =1  //
+ 123      =1  //       M1  M0      Operating
+ 124      =1  //    ----------------------------------------------------------------
+ 125      =1  //        0   0      8048 Timer: "TLn" serves as 5bit prescaler
+ 126      =1  //
+ 127      =1  //
+ 128      =1  //        0   1      16-bit Timer/Counter" "THn" and "TLn" are cascaded;
+ 129      =1  //                   There is no prescaler.
+ 130      =1  //
+ 131      =1  //        1   0      8-bit auto-reload Timer/Counter: "THn" holds a value
+ 132      =1  //                   which is to be reloaded into "TLn" each time it
+ 133      =1  //                   overflows.
+ 134      =1  //
+ 135      =1  //        1   1 Timer 0: TL0 is an 8-bit Timer/Counter controlled
+ 136      =1  //                       by the standard Timer 0 control bits.
+ 137      =1  //                       TH0 is an 8-bit timer only controlled
+ 138      =1  //                       by Timer 1 control bits.
+ 139      =1  //
+ 140      =1  //        1   1 Timer 1: Timer/Counter 1 stopped.
+ 141      =1  //
+ 142      =1  //
+ 143      =1  // ------------------------------------------------------------------------
+ 144      =1  //
+ 145      =1  //             Registr rizeni behu citace/casovace TCON
+ 146      =1  //                  +-------------------------------+
+ 147      =1  //                  ¦TF1¦TR1¦TF0¦TR0¦IE1¦IT1¦IE0¦IT0¦
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 6   
+
+ 148      =1  //                  +-------------------------------+
+ 149      =1  //                    ^   ^   ^   ^   ^   ^   ^   ^
+ 150      =1  //             TCON.7 +   |   |   |   |   |   ¦   + TCON.0
+ 151      =1  //    Preteceni casovace  |   |   |   |   |   ¦     Rizeni typu  preruseni
+ 152      =1  //    c. 1                |   |   |   |   |   ¦     urovni 0
+ 153      =1  //                        |   |   |   |   |   ¦
+ 154      =1  //             TCON.6 ----+   |   |   |   |   +---- TCON.1
+ 155      =1  //    Rizeni behu citace 1    |   |   |   |         Preruseni 0 citlive
+ 156      =1  //    pri scitani             |   |   |   |         na hranu ci uroven
+ 157      =1  //                            |   |   |   |
+ 158      =1  //                            |   |   |   |
+ 159      =1  //             TCON.5 --------+   |   |   +-------- TCON.2
+ 160      =1  //    Preteceni casovace c.0      |   |             Rizeni typu  preru-
+ 161      =1  //                                |   |             seni urovni 1
+ 162      =1  //                                |   |
+ 163      =1  //             TCON.4 ------------+   +------------ TCON.3
+ 164      =1  //    Rizeni behu citace 0                          Preruseni 1 citlive
+ 165      =1  //                                                  na hranu ci uroven
+ 166      =1  //
+ 167      =1  //
+ 168      =1  // ------------------------------------------------------------------------
+ 169      =1  //
+ 170      =1  //                 Rizeni prerusovaciho mechanismu
+ 171      =1  //
+ 172      =1  //                         Interrupt Control (IC)
+ 173      =1  //                    +-------------------------------+
+ 174      =1  //                    ¦ EA¦ EC¦ET2¦ ES¦ET1¦EX1¦ET0¦EX0¦
+ 175      =1  //                    +-------------------------------+
+ 176      =1  //                      7   6   5   4   3   2   1   0
+ 177      =1  //
+ 178      =1  //      EA         - povoleni vsech preruseni
+ 179      =1  //      EC         - povoleni PCA preruseni
+ 180      =1  //      ET0..ET2   - povoleni preruseni od citace/casovace 0..2
+ 181      =1  //      EX0,EX1    - povoleni vnejsich preruseni 0 a 1
+ 182      =1  //      ES         - povoleni preruseni od serioveho rozhrani
+ 183      =1  //
+ 184      =1  //
+ 185      =1  //                         Interrupt Priority (IP)
+ 186      =1  //                    +-------------------------------+
+ 187      =1  //                    ¦ - ¦PPC¦PT2¦ PS¦PT1¦PX1¦PT0¦PX0¦
+ 188      =1  //                    +-------------------------------+
+ 189      =1  //                      7   6   5   4   3   2   1   0
+ 190      =1  //
+ 191      =1  //      PPC        - priorita PCA preruseni
+ 192      =1  //      PT0..PT2   - priorita preruseni od citacu/casovacu 0..2
+ 193      =1  //      PX0,PX1    - priorita vnejsich preruseni 0 a 1
+ 194      =1  //      PS         - priorita preruseni od serioveho rozhrani
+ 195      =1  //
+ 196      =1  // ------------------------------------------------------------------------
+ 197      =1  //
+ 198      =1  //                   Stavove slovo programu (PSW)
+ 199      =1  //                  +-------------------------------+
+ 200      =1  //                  ¦ C ¦AC ¦F0 ¦RS1¦RS0¦OV ¦   ¦ P ¦
+ 201      =1  //                  +-------------------------------+
+ 202      =1  //                    ^   ^   ^   ^   ^   ^   ^   ^
+ 203      =1  //              PSW.7 +   ¦   ¦   ¦   ¦   ¦   ¦   + PSW.0
+ 204      =1  //    Priznak prenosu     ¦   ¦   ¦   ¦   ¦   ¦     Parita akumulatoru,
+ 205      =1  //    prijima  prenos     ¦   ¦   ¦   ¦   ¦   ¦     nastavena hardwarem
+ 206      =1  //    z   ACC.7   pri     ¦   ¦   ¦   ¦   ¦   ¦     na "1", je-li pocet
+ 207      =1  //    operacich arit-     ¦   ¦   ¦   ¦   ¦   ¦     jednicek v akumulá-
+ 208      =1  //    meticko-logicke     ¦   ¦   ¦   ¦   ¦   ¦     toru  lichy,  jinak
+ 209      =1  //    jednotky            ¦   ¦   ¦   ¦   ¦   ¦     nastavena na "0"
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 7   
+
+ 210      =1  //                        ¦   ¦   ¦   ¦   ¦   ¦
+ 211      =1  //              PSW.6 ----+   ¦   ¦   ¦   ¦   +---- PSW.1
+ 212      =1  //    Pomocny  prenos         ¦   ¦   ¦   ¦         Volne pouzitelne
+ 213      =1  //    prenos z  ACC.3         ¦   ¦   ¦   ¦
+ 214      =1  //    pri scitani             ¦   ¦   ¦   ¦
+ 215      =1  //                            ¦   ¦   ¦   ¦
+ 216      =1  //              PSW.5 --------+   ¦   ¦   +-------- PSW.2
+ 217      =1  //    Bit pro vseobec-            ¦   ¦             Priznak  preteceni,
+ 218      =1  //    ne pouziti                  ¦   ¦             nastavuji  aritmet-
+ 219      =1  //                                ¦   ¦             meticke instrukce
+ 220      =1  //                                ¦   ¦
+ 221      =1  //              PSW.4 ------------+   +------------ PSW.3
+ 222      =1  //    Vyber banky re-                               Vyber  banky regis-
+ 223      =1  //    gistru, bit 1                                 tru, bit 0
+ 224      =1  //
+ 225      =1  //
+ 226      =1  */
+  11          #include "hcom_drv.h"    // Driver HW serialu
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern bit          bHCOM_RIBUF;
+   5      =1  extern uchar  data  HCOM_RW_IX;
+   6      =1  extern uchar  data  HCOM_RR_IX;
+   7      =1  extern uchar  data  HCOM_RBIB;
+   8      =1  extern uchar  data  HCOM_RByte;
+   9      =1  extern bit          bHCOM_RB_Overflow;
+  10      =1  
+  11      =1  extern uchar  data  HCOM_SW_IX;
+  12      =1  extern uchar  data  HCOM_SR_IX;
+  13      =1  extern uchar  data  HCOM_SBIB;
+  14      =1  extern uchar  data  HCOM_SDELAY;
+  15      =1  extern bit          bHCOM_SB_Overflow;
+  16      =1  
+  17      =1  extern void HCOM_PROC();
+  18      =1  extern void HCOM_Init();
+  19      =1  extern bit  HCOM_WriteChar(uchar Ch);
+  20      =1  extern void HCOM_WriteString(uchar *Text, uchar MaxSize);
+  21      =1  extern void HCOM_StartSend();
+  22      =1  extern void HCOM_Start_NI_TXD();
+  23      =1  extern void HCOM_End_NI_TXD();
+  24      =1  
+  25      =1  extern bit HCOM_SendPtr(uchar *Ptr, uchar MaxIndex);
+  26      =1  
+  27      =1  extern bit HCOM_Get_Var(uint VarID);
+  12          #include "hcom_id.k"     // Definice ID pro cteni promennych driveru
+   1      =1  
+   2      =1  // Definice ID promennych
+   3      =1  #define cID_HCOM_Init    1
+   4      =1  #define cID_HCOM_SendPtr 2
+  13          #include "leds.h"        // Driver signalizacnich LED
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void  LED_ON(uchar LED_ID);
+   5      =1  extern void  LED_OFF(uchar LED_ID);
+   6      =1  extern void  LED_Stay(uchar LED_ID);
+   7      =1  extern void  LED_Init();
+   8      =1  extern void  LED_Proc();
+   9      =1  extern uchar LED_GetStayTime(uchar LED_ID);
+  14          #include "pins.h"        // Driver pinu procesoru
+   1      =1  
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 8   
+
+   2      =1  // Konfigurace HW prepinacu
+   3      =1  sbit    swtchTestMode   = P1^0;    // Testovaci mod, SMS nejsou skutecne odeslany
+   4      =1  sbit    swtchBridge     = P1^1;    // Prepinac komunikace - 232<->485 bridge
+   5      =1  sbit    swtchDebugMsgs  = P1^2;    // Povoleni ladicich zprav
+   6      =1  sbit    swtchConfigMode = P1^3;    // Konfiguracni mod
+   7      =1  
+   8      =1  // Prirazeni ovladacich bitu k pinum
+   9      =1  sbit    SCL             = P1^4;    // Sit - Komunikace 485 (Hodiny)
+  10      =1  sbit    SDA             = P1^5;    // Sit - Komunikace 485 (Data)
+  11      =1  sbit    M_S             = P1^7;    // Propojeni komunikace
+  12      =1  sbit    IGN             = P2^7;    // Ignition GSM modemu
+  13      =1  #define RXD1              INT0     // Emulovany serial (Prijem)
+  14      =1  #define TXD1                T1     // Emulovany serial (Vysilani)
+  15      =1  #define DIR1                T0     // T0 ... prepinani smeru toku dat
+  16      =1  #define RXM               INT1
+  17      =1  
+  18      =1  // Prirazeni pinu pro synchronni komunikaci s externim zarizenim
+  19      =1  sbit pin_HSI = P2^0;
+  20      =1  sbit pin_HSO = P2^1;
+  21      =1  sbit pin_D0  = P2^2;
+  22      =1  sbit pin_D1  = P2^3;
+  23      =1  sbit pin_D2  = P2^4;
+  24      =1  sbit pin_D3  = P2^5;
+  25      =1  
+  26      =1  // Prirazeni LED
+  27      =1  sbit pin_LED0 = P0^0;    // Pin pro LED0
+  28      =1  sbit pin_LED1 = P0^1;    // Pin pro LED1
+  29      =1  sbit pin_LED2 = P0^2;    // Pin pro LED2
+  30      =1  sbit pin_LED3 = P0^3;    // Pin pro LED3
+  31      =1  sbit pin_LED4 = P0^4;    // Pin pro LED4
+  32      =1  sbit pin_LED5 = P0^5;    // Pin pro LED5
+  33      =1  sbit pin_LED6 = P0^6;    // Pin pro LED4
+  34      =1  sbit pin_LED7 = P0^7;    // Pin pro LED5
+  35      =1  
+  15          #include "shorttyp.h"    // Zkraceni definice uchar uint a ulong
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  #define ulong unsigned long
+  16          #include "synchcom.k"    // Definice pro driver sersynchfulldup
+   1      =1  
+   2      =1  
+   3      =1  //------------------------------------------------------------------------------
+   4      =1  #define cSrcBuffers       5          // Velikost pole pointeru pro odesilani dat
+   5      =1  #define cRecBufSize      10          // Velikost bufferu pro prijem dat
+   6      =1  #define cLogBufSize     160          // Velikost rotacniho bufferu pro logovani
+   7      =1  //------------------------------------------------------------------------------
+   8      =1  
+  17          #include "synchcom.h"    // Driver synchronni seriove fullduplex komunikace
+   1      =1  
+   2      =1  //------------------------------------------------------------------------------
+   3      =1  extern uchar SYNCH_SendMsg(uchar *pSrcBuf, uchar SrcBytes);
+   4      =1  extern uchar SYNCH_GetSrcByte();
+   5      =1  extern void  SYNCH_SendByte();
+   6      =1  extern bit   SYNCH_SaveNibble(bit H_L);
+   7      =1  extern void  SYNCH_GetByte();
+   8      =1  extern uchar SYNCH_GetChar();
+   9      =1  extern void  SYNCH_Init();
+  10      =1  extern void  SYNCH_Proc();
+  11      =1  
+  12      =1  extern bit SYNCH_LogWriteChar(uchar Ch);
+  13      =1  extern void SYNCH_LogWriteString(uchar *Text, uchar MaxSize);
+  14      =1  
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 9   
+
+  15      =1  extern uchar xdata SYNCH_BytesInRecBuf;
+  16      =1  extern uchar xdata SYNCH_BytesInSndBuf;
+  17      =1  extern uchar xdata SYNCH_BytesInLogBuf;
+  18      =1  extern bit         SYNCH_RIBUF;
+  19      =1  
+  20      =1  extern uchar xdata sSYNCH_RecStep;
+  21      =1  extern uchar xdata sSYNCH_SndStep;
+  22      =1  extern uchar xdata SYNCH_RecBufIx_w;
+  23      =1  extern uchar xdata SYNCH_RecBufIx_r;
+  24      =1  extern uchar xdata SYNCH_LogBufIx_w;
+  25      =1  extern uchar xdata SYNCH_LogBufIx_r;
+  26      =1  extern uchar xdata SYNCH_SrcPtrIx_w;
+  27      =1  extern uchar xdata SYNCH_SrcPtrIx_r;
+  28      =1  extern uchar xdata SYNCH_BytesInSndBuf;
+  29      =1  extern uchar xdata SYNCH_BytesInRecBuf;
+  30      =1  extern uchar xdata SYNCH_ByteInLogBuf;
+  31      =1  extern uchar xdata SYNCH_PtrInBuf;
+  32      =1  
+  33      =1  //------------------------------------------------------------------------------
+  18          #include "watchdog.h"    // Definice pripojeni watchdogu
+   1      =1  // Definice pinu s watchdogem
+   2      =1  
+   3      =1  sbit    WDI             = P1^6;    // Watchdog
+  19          #include "time.h"
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void Time_SetTime(uchar Hour,uchar Min,uchar Sec);
+   5      =1  extern void Time_SetDate(uchar Year,uchar Month,uchar Day);
+   6      =1  extern uchar Time_GetHour();
+   7      =1  extern uchar Time_GetMin();
+   8      =1  extern uchar Time_GetSec();
+   9      =1  extern uchar Time_GetYear();
+  10      =1  extern uchar Time_GetMonth();
+  11      =1  extern uchar Time_GetDay();
+  12      =1  extern void Time_SetHour(uchar Hour);
+  13      =1  extern void Time_SetMin(uchar Min);
+  14      =1  extern void Time_SetSec(uchar Sec);
+  15      =1  extern void Time_SetYear(uchar Year);
+  16      =1  extern void Time_SetMonth(uchar Month);
+  17      =1  extern void Time_SetDay(uchar Day);
+  18      =1  extern void Time_Init();
+  19      =1  
+  20      =1  extern bit  bTimeout_1Sec;
+  21      =1  extern void Timeout_Set(uchar Counter, uint Time);
+  22      =1  extern bit  Timeout(uchar Counter);
+  23      =1  extern uint Timeout_Value(uchar Counter);
+  24      =1  
+  20          /*-------------------------------------------------------------------------*/
+  21          
+  22          
+  23          // Inicializace vsech modulu a promennych
+  24          void Main_Init()
+  25          { CPU_Init();                 // Init procesoru a preruseni
+  26   1        HCOM_Init();                // Init HW_serialu
+  27   1        LED_Init();                 // Init driveru signalizacnich LED
+  28   1        Time_Init();
+  29   1        SYNCH_Init();              // Init driveru synchronni seriove fullduplex komunikace
+  30   1      }
+  31          
+  32          
+  33          void nic()
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 10  
+
+  34          {
+  35   1        HCOM_Start_NI_TXD();
+  36   1        HCOM_End_NI_TXD();
+  37   1        HCOM_SendPtr(0, 0);
+  38   1        HCOM_Get_Var(0);
+  39   1      
+  40   1        LED_ON(0);
+  41   1        LED_OFF(0);
+  42   1        LED_Stay(0);
+  43   1        LED_Init();
+  44   1        LED_Proc();
+  45   1        LED_GetStayTime(0);
+  46   1      
+  47   1        Time_SetTime(0,0,0);
+  48   1        Time_SetDate(0,0,0);
+  49   1        Time_GetHour();
+  50   1        Time_GetMin();
+  51   1        Time_GetSec();
+  52   1        Time_GetYear();
+  53   1        Time_GetMonth();
+  54   1        Time_GetDay();
+  55   1        Time_SetHour(0);
+  56   1        Time_SetMin(0);
+  57   1        Time_SetSec(0);
+  58   1        Time_SetYear(0);
+  59   1        Time_SetMonth(0);
+  60   1        Time_SetDay(0);
+  61   1        Timeout_Value(0);
+  62   1      
+  63   1        HCOM_WriteString(0,0);
+  64   1      
+  65   1        SYNCH_SendMsg(0,0);
+  66   1        SYNCH_LogWriteString(0,0);
+  67   1      }
+  68          
+  69          
+  70          
+  71          /*========================================================================*/
+  72          /*                            Hlavni program                              */
+  73          /*========================================================================*/
+  74          void main()
+  75          { uchar Nic=0;
+  76   1      
+  77   1        if(Nic) nic();
+  78   1      
+  79   1        Main_Init();                         // Inicializace a spusteni uvodnich akci
+  80   1        SYNCH_Init();
+  81   1      
+  82   1        while(1)
+  83   1        { if(bHCOM_RIBUF)                    // Prijat znak na serialu
+  84   2          { SYNCH_LogWriteChar(HCOM_RByte);
+  85   3            bHCOM_RIBUF=0;
+  86   3          }
+  87   2      
+  88   2          if(SYNCH_RIBUF)                    // Prijaty znak na synchronni komunikaci
+  89   2          { HCOM_WriteChar(SYNCH_GetChar()); // Posli na 232
+  90   3            SYNCH_RIBUF=0;
+  91   3          }
+  92   2          HCOM_PROC();                            // Obsluha HW_serialu
+  93   2          SYNCH_Proc();                           // Obsluha synch serial fullduplex
+  94   2          LED_Proc();                             // Obsluha signalizacnich LED
+  95   2          WDI=~WDI;                               // Obsluha Watchdogu
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 11  
+
+  96   2        }
+  97   1      }
+  98          
+  99            
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 12  
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION CPU_Init (BEGIN)
+                                           ; SOURCE LINE # 5
+                                           ; SOURCE LINE # 6
+0000 E4                CLR     A
+0001 F5A8              MOV     IE,A
+                                           ; SOURCE LINE # 8
+0003 F5B8              MOV     IP,A
+                                           ; SOURCE LINE # 10
+0005 C2D3              CLR     RS0
+                                           ; SOURCE LINE # 11
+0007 C2D4              CLR     RS1
+                                           ; SOURCE LINE # 21
+0009 759850            MOV     SCON,#050H
+                                           ; SOURCE LINE # 26
+000C D2B0              SETB    RXD
+                                           ; SOURCE LINE # 27
+000E D2B1              SETB    TXD
+                                           ; SOURCE LINE # 28
+0010 C299              CLR     TI
+                                           ; SOURCE LINE # 30
+0012 758921            MOV     TMOD,#021H
+                                           ; SOURCE LINE # 32
+0015 53877F            ANL     PCON,#07FH
+                                           ; SOURCE LINE # 34
+0018 758BFB            MOV     TL1,#0FBH
+                                           ; SOURCE LINE # 35
+001B 758DFB            MOV     TH1,#0FBH
+                                           ; SOURCE LINE # 36
+001E D28E              SETB    TR1
+                                           ; SOURCE LINE # 39
+0020 75CAFF            MOV     RCAP2L,#0FFH
+                                           ; SOURCE LINE # 40
+0023 75CBF3            MOV     RCAP2H,#0F3H
+                                           ; SOURCE LINE # 42
+0026 F5C8              MOV     T2CON,A
+                                           ; SOURCE LINE # 43
+0028 D2CA              SETB    TR2
+                                           ; SOURCE LINE # 44
+002A D2AD              SETB    ET2
+                                           ; SOURCE LINE # 45
+002C C2CF              CLR     TF2
+                                           ; SOURCE LINE # 49
+002E D2AC              SETB    ES
+                                           ; SOURCE LINE # 50
+0030 D2AF              SETB    EA
+                                           ; SOURCE LINE # 52
+0032 22                RET     
+             ; FUNCTION CPU_Init (END)
+
+             ; FUNCTION Main_Init (BEGIN)
+                                           ; SOURCE LINE # 24
+                                           ; SOURCE LINE # 25
+0000 120000      R     LCALL   CPU_Init
+                                           ; SOURCE LINE # 26
+0003 120000      E     LCALL   HCOM_Init
+                                           ; SOURCE LINE # 27
+0006 120000      E     LCALL   LED_Init
+                                           ; SOURCE LINE # 28
+0009 120000      E     LCALL   Time_Init
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 13  
+
+                                           ; SOURCE LINE # 29
+000C 020000      E     LJMP    SYNCH_Init
+             ; FUNCTION Main_Init (END)
+
+             ; FUNCTION nic (BEGIN)
+                                           ; SOURCE LINE # 33
+                                           ; SOURCE LINE # 34
+                                           ; SOURCE LINE # 35
+0000 120000      E     LCALL   HCOM_Start_NI_TXD
+                                           ; SOURCE LINE # 36
+0003 120000      E     LCALL   HCOM_End_NI_TXD
+                                           ; SOURCE LINE # 37
+0006 7B00              MOV     R3,#00H
+0008 7A00              MOV     R2,#00H
+000A 7900              MOV     R1,#00H
+000C E4                CLR     A
+000D FD                MOV     R5,A
+000E 120000      E     LCALL   _HCOM_SendPtr
+                                           ; SOURCE LINE # 38
+0011 E4                CLR     A
+0012 FF                MOV     R7,A
+0013 FE                MOV     R6,A
+0014 120000      E     LCALL   _HCOM_Get_Var
+                                           ; SOURCE LINE # 40
+0017 E4                CLR     A
+0018 FF                MOV     R7,A
+0019 120000      E     LCALL   _LED_ON
+                                           ; SOURCE LINE # 41
+001C E4                CLR     A
+001D FF                MOV     R7,A
+001E 120000      E     LCALL   _LED_OFF
+                                           ; SOURCE LINE # 42
+0021 E4                CLR     A
+0022 FF                MOV     R7,A
+0023 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 43
+0026 120000      E     LCALL   LED_Init
+                                           ; SOURCE LINE # 44
+0029 120000      E     LCALL   LED_Proc
+                                           ; SOURCE LINE # 45
+002C E4                CLR     A
+002D FF                MOV     R7,A
+002E 120000      E     LCALL   _LED_GetStayTime
+                                           ; SOURCE LINE # 47
+0031 E4                CLR     A
+0032 FB                MOV     R3,A
+0033 FD                MOV     R5,A
+0034 FF                MOV     R7,A
+0035 120000      E     LCALL   _Time_SetTime
+                                           ; SOURCE LINE # 48
+0038 E4                CLR     A
+0039 FB                MOV     R3,A
+003A FD                MOV     R5,A
+003B FF                MOV     R7,A
+003C 120000      E     LCALL   _Time_SetDate
+                                           ; SOURCE LINE # 49
+003F 120000      E     LCALL   Time_GetHour
+                                           ; SOURCE LINE # 50
+0042 120000      E     LCALL   Time_GetMin
+                                           ; SOURCE LINE # 51
+0045 120000      E     LCALL   Time_GetSec
+                                           ; SOURCE LINE # 52
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 14  
+
+0048 120000      E     LCALL   Time_GetYear
+                                           ; SOURCE LINE # 53
+004B 120000      E     LCALL   Time_GetMonth
+                                           ; SOURCE LINE # 54
+004E 120000      E     LCALL   Time_GetDay
+                                           ; SOURCE LINE # 55
+0051 E4                CLR     A
+0052 FF                MOV     R7,A
+0053 120000      E     LCALL   _Time_SetHour
+                                           ; SOURCE LINE # 56
+0056 E4                CLR     A
+0057 FF                MOV     R7,A
+0058 120000      E     LCALL   _Time_SetMin
+                                           ; SOURCE LINE # 57
+005B E4                CLR     A
+005C FF                MOV     R7,A
+005D 120000      E     LCALL   _Time_SetSec
+                                           ; SOURCE LINE # 58
+0060 E4                CLR     A
+0061 FF                MOV     R7,A
+0062 120000      E     LCALL   _Time_SetYear
+                                           ; SOURCE LINE # 59
+0065 E4                CLR     A
+0066 FF                MOV     R7,A
+0067 120000      E     LCALL   _Time_SetMonth
+                                           ; SOURCE LINE # 60
+006A E4                CLR     A
+006B FF                MOV     R7,A
+006C 120000      E     LCALL   _Time_SetDay
+                                           ; SOURCE LINE # 61
+006F E4                CLR     A
+0070 FF                MOV     R7,A
+0071 120000      E     LCALL   _Timeout_Value
+                                           ; SOURCE LINE # 63
+0074 7B00              MOV     R3,#00H
+0076 7A00              MOV     R2,#00H
+0078 7900              MOV     R1,#00H
+007A E4                CLR     A
+007B FD                MOV     R5,A
+007C 120000      E     LCALL   _HCOM_WriteString
+                                           ; SOURCE LINE # 65
+007F 7B00              MOV     R3,#00H
+0081 7A00              MOV     R2,#00H
+0083 7900              MOV     R1,#00H
+0085 E4                CLR     A
+0086 FD                MOV     R5,A
+0087 120000      E     LCALL   _SYNCH_SendMsg
+                                           ; SOURCE LINE # 66
+008A 7B00              MOV     R3,#00H
+008C 7A00              MOV     R2,#00H
+008E 7900              MOV     R1,#00H
+0090 E4                CLR     A
+0091 FD                MOV     R5,A
+0092 020000      E     LJMP    _SYNCH_LogWriteString
+             ; FUNCTION nic (END)
+
+             ; FUNCTION main (BEGIN)
+                                           ; SOURCE LINE # 74
+                                           ; SOURCE LINE # 75
+;---- Variable 'Nic' assigned to Register 'R7' ----
+0000 E4                CLR     A
+                                           ; SOURCE LINE # 77
+C51 COMPILER V6.12  _MAIN                                                                  10/23/2005 15:48:43 PAGE 15  
+
+0001 6003              JZ      ?C0004
+0003 120000      R     LCALL   nic
+0006         ?C0004:
+                                           ; SOURCE LINE # 79
+0006 120000      R     LCALL   Main_Init
+                                           ; SOURCE LINE # 80
+0009 120000      E     LCALL   SYNCH_Init
+000C         ?C0005:
+                                           ; SOURCE LINE # 82
+                                           ; SOURCE LINE # 83
+000C 300007      E     JNB     bHCOM_RIBUF,?C0007
+                                           ; SOURCE LINE # 84
+000F AF00        E     MOV     R7,HCOM_RByte
+0011 120000      E     LCALL   _SYNCH_LogWriteChar
+                                           ; SOURCE LINE # 85
+0014 C200        E     CLR     bHCOM_RIBUF
+                                           ; SOURCE LINE # 86
+0016         ?C0007:
+                                           ; SOURCE LINE # 88
+0016 300008      E     JNB     SYNCH_RIBUF,?C0008
+                                           ; SOURCE LINE # 89
+0019 120000      E     LCALL   SYNCH_GetChar
+001C 120000      E     LCALL   _HCOM_WriteChar
+                                           ; SOURCE LINE # 90
+001F C200        E     CLR     SYNCH_RIBUF
+                                           ; SOURCE LINE # 91
+0021         ?C0008:
+                                           ; SOURCE LINE # 92
+0021 120000      E     LCALL   HCOM_PROC
+                                           ; SOURCE LINE # 93
+0024 120000      E     LCALL   SYNCH_Proc
+                                           ; SOURCE LINE # 94
+0027 120000      E     LCALL   LED_Proc
+                                           ; SOURCE LINE # 95
+002A B296              CPL     WDI
+                                           ; SOURCE LINE # 96
+002C 80DE              SJMP    ?C0005
+             ; FUNCTION main (END)
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    261    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,567 @@
+
+//-------------------------------------------------------------------------//
+/////////////////////////////////////////////////////////////////////////////
+// +---------------------------------------------------------------------+ //
+// |               Driver synchronniho poloduplex rozhrani (6bit)        | //
+// |                  -------------------------------------              | //
+// |                       Verze 1.03  Build 051008                      | //
+// |                         Tomas Hujer (c) 2005                        | //
+// +---------------------------------------------------------------------+ //
+// | Driver umi komunikovat pomoci 6 dratu, 2 bity jsou ridici a         | //
+// | 4 datove. Kazdy smer komunikace ma svuj handshake ovladany pouze    | //
+// | jednim zarizenim. Na datovych bitech se v casovem multiplexu        | //
+// | prenasi informace o aktualne prenasenem niblu (H/L) a data.         | //
+// | Pokud probiha vysilani, je prijem blokovan, aby nedoslo ke zpetne   | //
+// | smycce.                                                             | //
+// +---------------------------------------------------------------------+ //
+/////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------//
+#include "reg52.h"
+#include "shorttyp.h"          // Zkraceni definice typu
+#include "time.h"              //
+#include "time_def.k"          //
+#include "leds.h"              //
+#include "leds.k"              //
+#include "pins.h"              // Definice pinu procesoru
+#include "synchcom.k"          // Vlastni definice
+#include "synchcom.h"
+
+//------------------------------------------------------------------------------
+uchar * xdata SYNCH_ptr_Src[cSrcBuffers]; // Pole pointeru na data k vysilani
+uchar xdata SYNCH_SrcBytes[cSrcBuffers];  // Pocet byte pro odeslani
+uchar xdata SYNCH_SrcPtrIx_w;             // Aktualni index pole poiteru pro zapis
+uchar xdata SYNCH_SrcPtrIx_r;             // Aktualni index pole poiteru pro cteni
+uchar xdata SYNCH_PtrInBuf;               // Pocet pointeru v bufferu
+uchar xdata SYNCH_SrcIndex;               // Index zdrojovych dat
+uchar xdata SYNCH_BytesInSndBuf;          // Pocet znaku ve zdrojovem bufferu
+
+uchar xdata SYNCH_RecBuf[cRecBufSize];    // Buffer pro prijem dat
+uchar xdata SYNCH_RecBufIx_w;             // Aktualni index recbuf pro zapis
+uchar xdata SYNCH_RecBufIx_r;             // Aktualni index recbuf pro cteni
+uchar xdata SYNCH_BytesInRecBuf;          // Pocet byte v prijimacim bufferu
+bit         SYNCH_Rec_HL;                 // H/L nibble
+bit         SYNCH_RIBUF;                  // flag pro prijata data v bufferu
+
+uchar xdata SYNCH_LogBuf[cLogBufSize];    // Buffer pro logovani
+uchar xdata SYNCH_LogBufIx_w;             // Index pro zapis do log bufferu
+uchar xdata SYNCH_LogBufIx_r;             // Index pro cteni z log bufferu
+uchar xdata SYNCH_ByteInLogBuf;           // Pocet byte v log bufferu
+bit         bSYNCH_LogBufOverflow;        // Flag preteceni log bufferu
+
+uchar xdata sSYNCH_RecStep;               // Ridici promenna pro prijem dat
+uchar xdata sSYNCH_SndStep;               // Ridici promenna pro vysilani dat
+
+//------------------------------------------------------------------------------
+
+uchar SYNCH_SendMsg(uchar *pSrcBuf, uchar SrcBytes)
+{ bit State;
+
+  State=0;
+  if(SYNCH_PtrInBuf < cSrcBuffers) // Pokud je v bufferu misto
+  { SYNCH_SrcPtrIx_w%=cSrcBuffers; // Rotuj buffer
+    SYNCH_ptr_Src[SYNCH_SrcPtrIx_w]=pSrcBuf;   // Zkopiruj pointer na odesilana data
+    SYNCH_SrcBytes[SYNCH_SrcPtrIx_w]=SrcBytes; // Zkopiruj pocet odesilanych byte
+
+    SYNCH_PtrInBuf++;             // Inc pocet pointeru v poli
+    SYNCH_SrcPtrIx_w++;           // Posun ukazatel na dalsi misto v poli pointeru
+    State=1;
+  }
+  return(State);
+}
+
+
+// Zapis znaku do log bufferu
+bit SYNCH_LogWriteChar(uchar Ch)
+{ if(SYNCH_ByteInLogBuf < cLogBufSize)
+  { SYNCH_LogBufIx_w %= cLogBufSize;       // Rotuj index, je-li na konci bufferu
+    SYNCH_LogBuf[SYNCH_LogBufIx_w]=Ch;     // Zapis znak do sndbuf
+    SYNCH_LogBufIx_w++;                    // Posun index
+    SYNCH_ByteInLogBuf++;                  // Zvys pocet znaku v sndbuf
+    return(1);
+  }
+  else
+  { bSYNCH_LogBufOverflow=1;             // Nastav flag preteceni bufferu
+    return(0);
+  }
+}
+
+
+// Zapis retezce do log buf
+void SYNCH_LogWriteString(uchar *Text, uchar MaxSize)
+{ uchar i;
+
+  for(i=0; (Text[i] && (i<MaxSize)); i++)
+  {
+    if(~SYNCH_LogWriteChar(Text[i])) break;
+  }
+}
+
+
+// Nacti znak z Log buf
+uchar SYNCH_LogGetChar()
+{ uchar Out;
+
+  Out=0;
+  if(SYNCH_ByteInLogBuf)                  // Pokud je znak v LogBuf
+  { SYNCH_LogBufIx_r %= cLogBufSize;      // Pripadne pretoc index
+    Out=SYNCH_LogBuf[SYNCH_LogBufIx_r];   // Odesli znak z sndbuf
+  }
+  return(Out);
+}
+
+
+void SYNCH_LogNextChar()
+{
+  if(SYNCH_ByteInLogBuf)                  // Pokud je znak v LogBuf
+  { SYNCH_LogBufIx_r %= cLogBufSize;      // Pripadne pretoc index
+    SYNCH_LogBufIx_r++;                   // Posun index
+    SYNCH_ByteInLogBuf--;                 // Sniz pocet znaku v sndbuf
+  }
+}
+
+
+void SYNCH_NextSrcByte()
+{
+  SYNCH_SrcIndex++;       // Posun index v bufferu
+  SYNCH_GetSrcByte();  // Nech nastavit flagy a indexy pro novy index
+}
+
+
+uchar SYNCH_GetSrcByte()
+{ uchar OutChar;
+  bit   Repeat;
+
+  Repeat=1;
+  OutChar=0;
+
+  while(Repeat)
+  { SYNCH_SrcPtrIx_r%=cSrcBuffers;        // Rotuj index pro cteni z pointeru
+
+    // Pokud je neco na pointeru
+    if(SYNCH_SrcBytes[SYNCH_SrcPtrIx_r])
+    {
+      // Aktualizuj pocet znaku v bufferu
+      SYNCH_BytesInSndBuf = (SYNCH_SrcBytes[SYNCH_SrcPtrIx_r] - SYNCH_SrcIndex);
+
+      // Pokud je neco na pointeru
+      if(SYNCH_BytesInSndBuf)
+      {
+        // Nacti znak z pointeru v poli pointeru
+        OutChar=SYNCH_ptr_Src[SYNCH_SrcPtrIx_r][SYNCH_SrcIndex];
+        Repeat=0;                      // Nuluj flag pro dalsi pointer
+      }
+      else // jinak pokracuj dalsim pointerem
+      {
+        if(SYNCH_PtrInBuf)              // Pokud je jeste neco v bufferu
+        { SYNCH_SrcPtrIx_r++;           // Index na dalsi prvek v poli pointeru
+          SYNCH_PtrInBuf--;             // Dec pocet prvku v poli
+        }
+        else
+        {
+          Repeat=0;
+          SYNCH_BytesInSndBuf=0;        // Nuluj pocet byte na pointeru
+        }
+
+        SYNCH_SrcIndex=0;             // Nuluj index zdroj dat
+      }
+    }
+    else
+    {
+      Repeat=0;
+      SYNCH_BytesInSndBuf=0;          // Nuluj pocet byte na pointeru
+      SYNCH_SrcIndex=0;               // Nuluj index zdroj dat
+
+      if(SYNCH_PtrInBuf)
+      {
+        SYNCH_SrcPtrIx_r++;           // Index na dalsi prvek v poli pointeru
+        SYNCH_PtrInBuf--;             // Dec pocet prvku v poli
+      }
+    }
+  }
+  return(OutChar);
+}
+
+
+void SYNCH_SendByte()
+{ uchar OutChar=0;
+
+  #define cRS_ResetComm  50   // Stav - Reset komunikace - nastaveni vstupu na "1"
+  #define cCommTimeout  200   // Komunikacni
+
+  switch(sSYNCH_SndStep)
+  {
+    case 1:
+      LED_Stay(cLED_WR_SYNCH);
+
+//      SYNCH_SrcPtrIx_r%=cSrcBuffers;        // Rotuj index pro cteni z pointeru
+
+      // Aktualizuj pocet znaku v bufferu
+//      SYNCH_BytesInSndBuf = (SYNCH_SrcBytes[SYNCH_SrcPtrIx_r] - SYNCH_SrcIndex);
+
+      Timeout_Set(cSYNCH, cCommTimeout);
+      sSYNCH_SndStep++;
+      break;
+
+    //-------------- High nibble ------------------
+    case 2:
+      // Pokud je neco k odeslani,
+      // Pro jistotu nastav HSI a HSO -> 1 hanshakes
+      if((SYNCH_PtrInBuf) || (SYNCH_ByteInLogBuf))
+      { LED_Stay(cLED_WR_SYNCH);
+
+        pin_HSO=1;
+        pin_HSI=1;
+
+        Timeout_Set(cSYNCH, cCommTimeout);
+        sSYNCH_SndStep++;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    case 3:
+      // Pokud je HSI i HSO v 1,
+      // zapis do D0 ktery nibble se bude odesilat
+      // shod HSO->0 handshake
+      if(pin_HSO && pin_HSI)
+      {
+        LED_Stay(cLED_WR_SYNCH);
+
+        pin_D0=1;     // Nastav priznak pro H nibble znaku
+        pin_D1=0;
+        pin_D2=0;
+        pin_D3=0;
+        pin_HSI=1;
+        pin_HSO=0;    // Shod handshake
+        Timeout_Set(cSYNCH, cCommTimeout);
+        sSYNCH_SndStep++;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    case 4:
+      // Cekej na shozeni HSI
+      if(~pin_HSI)
+      {
+        LED_Stay(cLED_WR_SYNCH);
+
+        // Pokud je neco v log bufferu
+        if(SYNCH_ByteInLogBuf)
+        { // Zapis na sbernici znak z Log bufferu
+          OutChar=SYNCH_LogGetChar();
+        }
+        else
+        { // Zapis data na sbernici a nastav HSO->1
+          OutChar=SYNCH_GetSrcByte();  // Nacti aktualni znak pro odeslani
+        }
+        pin_D0=OutChar & 16;          // Nastav horni nibble znaku
+        pin_D1=OutChar & 32;
+        pin_D2=OutChar & 64;
+        pin_D3=OutChar & 128;
+        pin_HSO=1;                    // Nastav handshake
+
+        Timeout_Set(cSYNCH, cCommTimeout);
+        sSYNCH_SndStep++;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    //-------------- Low nibble ------------------
+    case 5:
+      // Pokud je HSI i HSO v 1,
+      // zapis do D0 dolni nibble
+      // shod HSO->0 handshake
+      if(pin_HSO && pin_HSI)
+      { LED_Stay(cLED_WR_SYNCH);
+
+        pin_D0=0;     // Nastav priznak pro L nibble znaku
+        pin_D1=0;
+        pin_D2=0;
+        pin_D3=0;
+        pin_HSI=1;
+        pin_HSO=0;    // Shod handshake
+        Timeout_Set(cSYNCH, cCommTimeout);
+        sSYNCH_SndStep++;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    case 6:
+      // Cekej na shozeni HSI
+      if(~pin_HSI)
+      {
+        LED_Stay(cLED_WR_SYNCH);
+
+        // Pokud je neco v log bufferu
+        if(SYNCH_ByteInLogBuf)
+        { // Zapis na sbernici znak z Log bufferu
+          OutChar=SYNCH_LogGetChar();
+          SYNCH_LogNextChar();         // Pouze u druheho nibblu !!!
+        }
+        else
+        { // Zapis data na sbernici a nastav HSO->1
+          OutChar=SYNCH_GetSrcByte();  // Nacti aktualni znak pro odeslani
+          SYNCH_NextSrcByte();         // Posun index zdroje na dalsi byte
+        }
+        pin_D0=OutChar & 1;           // Nastav dolni nibble
+        pin_D1=OutChar & 2;
+        pin_D2=OutChar & 4;
+        pin_D3=OutChar & 8;
+        pin_HSO=1;                    // Nastav handshake
+
+        Timeout_Set(cSYNCH, cCommTimeout);
+        sSYNCH_SndStep++;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    case  7:
+      // Cekej na nastaveni HSI=1
+      if(pin_HSI)
+      {
+        // Nastav vstupy
+        pin_HSO=1;
+        pin_HSI=1;
+        pin_D0=1;
+        pin_D1=1;
+        pin_D2=1;
+        pin_D3=1;
+
+        sSYNCH_SndStep=0;
+      }
+
+      if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+      break;
+
+    case cRS_ResetComm:
+             LED_Stay(cLED_WR_SYNCH);
+             pin_HSI=1;
+             pin_HSO=1;
+             pin_D0=1;
+             pin_D1=1;
+             pin_D2=1;
+             pin_D3=1;
+             sSYNCH_SndStep=0;
+             break;
+
+    default: sSYNCH_SndStep=0; break;
+  }
+}
+
+
+void SYNCH_NextRecByte()
+{
+  SYNCH_RecBufIx_w++;
+  SYNCH_BytesInRecBuf++;
+  SYNCH_RIBUF=1;
+}
+
+
+bit SYNCH_SaveNibble(bit H_L)
+{ bit State;
+  uchar Ch;
+
+  State=0;
+  // Pokud je pocet byte v bufferu mensi nez jeho velikost
+  if(SYNCH_BytesInRecBuf < cRecBufSize)
+  {
+    SYNCH_RecBufIx_w %= cRecBufSize; // Rotuj index prijimaciho buffer pro zapis
+
+    if(H_L) // Pokud je nibble horni
+    { Ch=SYNCH_RecBuf[SYNCH_RecBufIx_w];    // Zkopiruj byte z bufferu
+      Ch &= 0x0F;                             // Maskuj - ponech dolni nible tak jak byl
+      if(pin_D3) Ch |= (1 << 7);              // Nastav prislusne bity
+      if(pin_D2) Ch |= (1 << 6);
+      if(pin_D1) Ch |= (1 << 5);
+      if(pin_D0) Ch |= (1 << 4);
+      SYNCH_RecBuf[SYNCH_RecBufIx_w] = Ch;  // Zapis byte zpet do bufferu
+    }
+    else // Pokud je nibble dolni
+    { Ch=SYNCH_RecBuf[SYNCH_RecBufIx_w];    // Zkopiruj byte z bufferu
+      Ch &= 0xF0;                             // Maskuj - ponech horni nible tak jak byl
+      if(pin_D3) Ch |= (1 << 3);              // Nastav prislusne bity
+      if(pin_D2) Ch |= (1 << 2);
+      if(pin_D1) Ch |= (1 << 1);
+      if(pin_D0) Ch |= (1 << 0);
+      SYNCH_RecBuf[SYNCH_RecBufIx_w] = Ch;  // Zapis byte zpet do bufferu
+    }
+    State=1;
+  }
+
+  SYNCH_RIBUF=1;
+  return(State);
+}
+
+
+void SYNCH_GetByte()
+{
+  #define cRS_ResetComm  50       // Stav - Reset komunikace - nastaveni vstupu na "1"
+  #define cCommTimeout  200       // Komunikacni
+
+  switch(sSYNCH_RecStep)
+  {
+    // ------------ High nibble ---------------
+    case  1: // Nastav vstupy
+             LED_Stay(cLED_RD_SYNCH);
+             pin_HSI=1;
+             pin_HSO=1;
+             pin_D0=1;
+             pin_D1=1;
+             pin_D2=1;
+             pin_D3=1;
+             Timeout_Set(cSYNCH, cCommTimeout);
+             sSYNCH_RecStep++;
+             break;
+
+    case  2: // Cekej na HSI->0
+             if((~pin_HSI) && (pin_HSO))
+             {
+               LED_Stay(cLED_RD_SYNCH);
+
+               SYNCH_Rec_HL=pin_D0;   // Uloz H/L nibble
+               pin_HSO=0;              // Shod HSO->0 handshake
+
+               Timeout_Set(cSYNCH, cCommTimeout);
+               sSYNCH_RecStep++;
+             }
+
+             if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+             break;
+
+    case  3: // Cekej na nahozeni HSI handshake
+             if(pin_HSI)
+             {
+               LED_Stay(cLED_RD_SYNCH);
+
+               SYNCH_SaveNibble(SYNCH_Rec_HL);  // Nacti data nibble
+               pin_HSO=1;                         // Nastav HSO->1 handshake
+               Timeout_Set(cSYNCH, cCommTimeout);
+               sSYNCH_RecStep++;
+             }
+
+             if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+             break;
+
+    // ------------ Low nibble ---------------
+    case  4: // Cekej na shozeni HSI->0
+             if((~pin_HSI) && (pin_HSO))
+             {
+               LED_Stay(cLED_RD_SYNCH);
+               SYNCH_Rec_HL=pin_D0;     // Uloz H/L nibble
+               pin_HSO=0;                // Shod HSO->0 handshake
+
+               Timeout_Set(cSYNCH, cCommTimeout);
+               sSYNCH_RecStep++;
+             }
+
+             if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+             break;
+
+    case  5: // Cekej na nahozeni HSI handshake
+             if(pin_HSI)
+             {
+               LED_Stay(cLED_RD_SYNCH);
+
+               SYNCH_SaveNibble(SYNCH_Rec_HL);  // Nacti data nibble
+               SYNCH_NextRecByte();              // Posun index
+               pin_HSO=1;                         // Nastav HSO->1 handshake
+
+               sSYNCH_RecStep=0;
+             }
+
+             if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+             break;
+
+    case cRS_ResetComm:
+             LED_Stay(cLED_WR_SYNCH);
+             pin_HSI=1;
+             pin_HSO=1;
+             pin_D0=1;
+             pin_D1=1;
+             pin_D2=1;
+             pin_D3=1;
+             sSYNCH_RecStep=0;
+             break;
+
+    default: sSYNCH_RecStep=0; break;
+  }
+}
+
+
+uchar SYNCH_GetChar()
+{
+  uchar Ch;
+
+  Ch=0;
+  if(SYNCH_BytesInRecBuf)                    // Pokud je neco v prijimacim bufferu
+  {
+    SYNCH_RecBufIx_r %= cRecBufSize;         // Rotuj index prijimaciho bufferu
+    Ch = SYNCH_RecBuf[SYNCH_RecBufIx_r];    // Nacti znak z recbuf
+    SYNCH_RecBufIx_r++;                      // Posun index na dalsi znak
+    SYNCH_BytesInRecBuf--;                   // Dec poctu znaku v bufferu
+  }
+  return(Ch);
+}
+
+
+void SYNCH_Init()
+{
+  uchar i;
+
+  SYNCH_SrcPtrIx_w=0;
+  SYNCH_SrcPtrIx_r=0;
+  SYNCH_PtrInBuf=0;
+  SYNCH_SrcIndex=0;
+  SYNCH_BytesInSndBuf=0;
+
+  SYNCH_RecBufIx_w=0;
+  SYNCH_RecBufIx_r=0;
+  SYNCH_BytesInRecBuf=0;
+  SYNCH_Rec_HL=0;
+  SYNCH_RIBUF=0;
+
+  SYNCH_LogBufIx_w=0;
+  SYNCH_LogBufIx_r=0;
+  SYNCH_ByteInLogBuf=0;
+  bSYNCH_LogBufOverflow=0;
+
+  for(i=0; i<sizeof(SYNCH_RecBuf); i++) SYNCH_RecBuf[i]=0;
+  for(i=0; i<sizeof(SYNCH_SrcBytes); i++) SYNCH_SrcBytes[i]=0;
+
+  pin_HSI = 1;
+  pin_HSO = 1;
+  pin_D0  = 1;
+  pin_D1  = 1;
+  pin_D2  = 1;
+  pin_D3  = 1;
+
+  sSYNCH_RecStep=0;
+  sSYNCH_SndStep=0;
+}
+
+
+void SYNCH_Proc()
+{
+  // Nakopni vysilani pokud se neco zjevilo v Ptr nebo Log bufru a proces neni akcni
+  if(((SYNCH_PtrInBuf) || (SYNCH_ByteInLogBuf)) &&
+     (!sSYNCH_SndStep)) sSYNCH_SndStep=1;
+
+  // Nakopni prijem pokud neni vysilani a neco se dobyva z venku a proces neni akcni
+  if(!sSYNCH_SndStep)
+  {
+    if(((~pin_HSI) && (pin_HSO)) && (!sSYNCH_RecStep)) sSYNCH_RecStep=1;
+  }
+
+  // Volej proces, pokud je aktivni
+  if(sSYNCH_SndStep) SYNCH_SendByte();
+  else
+  {
+    if(sSYNCH_RecStep) SYNCH_GetByte();
+  }
+}
+
+

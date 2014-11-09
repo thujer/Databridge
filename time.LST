@@ -1,0 +1,853 @@
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE TIME
+OBJECT MODULE PLACED IN time.OBJ
+COMPILER INVOKED BY: E:\PRGJAZ\CPU51\C51_v612\C51\BIN\C51.EXE time.C51 DEBUG CODE LISTINCLUDE
+
+stmt level    source
+
+   1          #include <stdio.h>
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  STDIO.H
+   3      =1  
+   4      =1  Prototypes for standard I/O functions.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  #ifndef EOF
+  10      =1   #define EOF -1
+  11      =1  #endif
+  12      =1  
+  13      =1  #ifndef NULL
+  14      =1   #define NULL ((void *) 0)
+  15      =1  #endif
+  16      =1  
+  17      =1  #ifndef _SIZE_T
+  18      =1   #define _SIZE_T
+  19      =1   typedef unsigned int size_t;
+  20      =1  #endif
+  21      =1  
+  22      =1  #pragma SAVE
+  23      =1  #pragma REGPARMS
+  24      =1  extern char _getkey (void);
+  25      =1  extern char getchar (void);
+  26      =1  extern char ungetchar (char);
+  27      =1  extern char putchar (char);
+  28      =1  extern int printf   (const char *, ...);
+  29      =1  extern int sprintf  (char *, const char *, ...);
+  30      =1  extern int vprintf  (const char *, char *);
+  31      =1  extern int vsprintf (char *, const char *, char *);
+  32      =1  extern char *gets (char *, int n);
+  33      =1  extern int scanf (const char *, ...);
+  34      =1  extern int sscanf (char *, const char *, ...);
+  35      =1  extern int puts (const char *);
+  36      =1  
+  37      =1  #pragma RESTORE
+   2          #include "reg52.h"
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  REG52.H
+   3      =1  
+   4      =1  Header file for generic 80C52 and 80C32 microcontroller.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  /*  BYTE Registers  */
+  10      =1  sfr P0    = 0x80;
+  11      =1  sfr P1    = 0x90;
+  12      =1  sfr P2    = 0xA0;
+  13      =1  sfr P3    = 0xB0;
+  14      =1  sfr PSW   = 0xD0;
+  15      =1  sfr ACC   = 0xE0;
+  16      =1  sfr B     = 0xF0;
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 2   
+
+  17      =1  sfr SP    = 0x81;
+  18      =1  sfr DPL   = 0x82;
+  19      =1  sfr DPH   = 0x83;
+  20      =1  sfr PCON  = 0x87;
+  21      =1  sfr TCON  = 0x88;
+  22      =1  sfr TMOD  = 0x89;
+  23      =1  sfr TL0   = 0x8A;
+  24      =1  sfr TL1   = 0x8B;
+  25      =1  sfr TH0   = 0x8C;
+  26      =1  sfr TH1   = 0x8D;
+  27      =1  sfr IE    = 0xA8;
+  28      =1  sfr IP    = 0xB8;
+  29      =1  sfr SCON  = 0x98;
+  30      =1  sfr SBUF  = 0x99;
+  31      =1  
+  32      =1  /*  8052 Extensions  */
+  33      =1  sfr T2CON  = 0xC8;
+  34      =1  sfr RCAP2L = 0xCA;
+  35      =1  sfr RCAP2H = 0xCB;
+  36      =1  sfr TL2    = 0xCC;
+  37      =1  sfr TH2    = 0xCD;
+  38      =1  
+  39      =1  
+  40      =1  /*  BIT Registers  */
+  41      =1  /*  PSW  */
+  42      =1  sbit CY    = PSW^7;
+  43      =1  sbit AC    = PSW^6;
+  44      =1  sbit F0    = PSW^5;
+  45      =1  sbit RS1   = PSW^4;
+  46      =1  sbit RS0   = PSW^3;
+  47      =1  sbit OV    = PSW^2;
+  48      =1  sbit P     = PSW^0; //8052 only
+  49      =1  
+  50      =1  /*  TCON  */
+  51      =1  sbit TF1   = TCON^7;
+  52      =1  sbit TR1   = TCON^6;
+  53      =1  sbit TF0   = TCON^5;
+  54      =1  sbit TR0   = TCON^4;
+  55      =1  sbit IE1   = TCON^3;
+  56      =1  sbit IT1   = TCON^2;
+  57      =1  sbit IE0   = TCON^1;
+  58      =1  sbit IT0   = TCON^0;
+  59      =1  
+  60      =1  /*  IE  */
+  61      =1  sbit EA    = IE^7;
+  62      =1  sbit ET2   = IE^5; //8052 only
+  63      =1  sbit ES    = IE^4;
+  64      =1  sbit ET1   = IE^3;
+  65      =1  sbit EX1   = IE^2;
+  66      =1  sbit ET0   = IE^1;
+  67      =1  sbit EX0   = IE^0;
+  68      =1  
+  69      =1  /*  IP  */
+  70      =1  sbit PT2   = IP^5;
+  71      =1  sbit PS    = IP^4;
+  72      =1  sbit PT1   = IP^3;
+  73      =1  sbit PX1   = IP^2;
+  74      =1  sbit PT0   = IP^1;
+  75      =1  sbit PX0   = IP^0;
+  76      =1  
+  77      =1  /*  P3  */
+  78      =1  sbit RD    = P3^7;
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 3   
+
+  79      =1  sbit WR    = P3^6;
+  80      =1  sbit T1    = P3^5;
+  81      =1  sbit T0    = P3^4;
+  82      =1  sbit INT1  = P3^3;
+  83      =1  sbit INT0  = P3^2;
+  84      =1  sbit TXD   = P3^1;
+  85      =1  sbit RXD   = P3^0;
+  86      =1  
+  87      =1  /*  SCON  */
+  88      =1  sbit SM0   = SCON^7;
+  89      =1  sbit SM1   = SCON^6;
+  90      =1  sbit SM2   = SCON^5;
+  91      =1  sbit REN   = SCON^4;
+  92      =1  sbit TB8   = SCON^3;
+  93      =1  sbit RB8   = SCON^2;
+  94      =1  sbit TI    = SCON^1;
+  95      =1  sbit RI    = SCON^0;
+  96      =1  
+  97      =1  /*  P1  */
+  98      =1  sbit T2EX  = P1^1; // 8052 only
+  99      =1  sbit T2    = P1^0; // 8052 only
+ 100      =1               
+ 101      =1  /*  T2CON  */
+ 102      =1  sbit TF2    = T2CON^7;
+ 103      =1  sbit EXF2   = T2CON^6;
+ 104      =1  sbit RCLK   = T2CON^5;
+ 105      =1  sbit TCLK   = T2CON^4;
+ 106      =1  sbit EXEN2  = T2CON^3;
+ 107      =1  sbit TR2    = T2CON^2;
+ 108      =1  sbit C_T2   = T2CON^1;
+ 109      =1  sbit CP_RL2 = T2CON^0;
+   3          #include "shorttyp.h"    // Zkraceni definice uchar uint a ulong
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  #define ulong unsigned long
+   4          #include "time_def.k"    // Definice
+   1      =1  
+   2      =1  // Definice pro textovy report
+   3      =1  #define  cTime_TimeoutsReport  1
+   4      =1  #define  cTime_SysTimeReport   2
+   5      =1  
+   6      =1  // Prirazeni timeoutu rutinam
+   7      =1  #define cMain_TimeGuard          0  // Main:     Spousteni casovych akci
+   8      =1  #define cMain_Delay              1  // Main:     Akce "Zpozdeni"
+   9      =1  #define cAction_Timeout          2  // Main:     Process driver
+  10      =1  #define cAction_Timeout2         3  // Main:     Process driver 2
+  11      =1  #define cEEP_WriteData           4  // EEPROM:   Sekvencni zapis dat
+  12      =1  #define cEEP_Clear               5  // EEPROM:   Sekvencni vymazani
+  13      =1  #define cHCOM_IntUp              6  // HCOM:     Konec vysilani bez preruseni
+  14      =1  #define cLoopTest                7  // LoopTest: Test hlavni smycky
+  15      =1  #define cLED_Timer               8  // LED:      Rizeni doby svitu signalizacnich LED
+  16      =1  #define cSYNCH                   9  // SYNCH:    Synchronni komunikace
+  17      =1  // ----------------------------
+  18      =1  #define No_Timeouts             10  // Pocet timeoutu celkem
+  19      =1  
+   5          #include "leds.h"
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void  LED_ON(uchar LED_ID);
+   5      =1  extern void  LED_OFF(uchar LED_ID);
+   6      =1  extern void  LED_Stay(uchar LED_ID);
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 4   
+
+   7      =1  extern void  LED_Init();
+   8      =1  extern void  LED_Proc();
+   9      =1  extern uchar LED_GetStayTime(uchar LED_ID);
+   6          
+   7          //#define DEBUG_MODE
+   8          
+   9          #define CyclesTo1s 100
+  10          
+  11          struct
+  12          { uchar Year;
+  13            uchar Month;
+  14            uchar Day;
+  15            uchar Hour;
+  16            uchar Min;
+  17            uchar Sec;
+  18          } idata Time;
+  19          
+  20          uint xdata Timeouts[No_Timeouts];   // Definice pro obsluhu casoveho limitu
+  21          
+  22          #ifdef DEBUG_MODE
+              #include <leds.h>
+              #endif
+  25          
+  26          #define uchar unsigned char
+  27          #define uint unsigned int
+  28          
+  29          uchar  data Timeout_1Sec;
+  30          
+  31          
+  32          
+  33          
+  34          /*=========================================================================*/
+  35          /*                       Interrupt - Timer 2                               */
+  36          /*-------------------------------------------------------------------------*/
+  37          #pragma NOAREGS
+  38          void int_ct2() interrupt 5
+  39          { uchar i;
+  40   1      
+  41   1        if(TF2)
+  42   1        { for(i=0; i<No_Timeouts; i++)           // Odpocitavej timeouty
+  43   2          { if(Timeouts[i])
+  44   3            { Timeouts[i]--;
+  45   4            }
+  46   3          }
+  47   2      
+  48   2          if(Timeout_1Sec) Timeout_1Sec--;      // Odpocitavej 1s
+  49   2          else
+  50   2          { Timeout_1Sec=CyclesTo1s;            // Napln citac pro 1s
+  51   3      
+  52   3            Time.Sec++;                         // Pocitej cas
+  53   3            if(Time.Sec>59)
+  54   3            { Time.Sec=0; Time.Min++;
+  55   4              if(Time.Min>59)
+  56   4              { Time.Min=0; Time.Hour++;
+  57   5                if(Time.Hour>23)
+  58   5                { Time.Hour=0; Time.Day++;
+  59   6                  if(Time.Day>30)
+  60   6                  { Time.Day=0; Time.Month++;
+  61   7                    if(Time.Month>12)
+  62   7                    { Time.Month=0; Time.Year++;
+  63   8                    }
+  64   7                  }
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 5   
+
+  65   6                }
+  66   5              }
+  67   4            }
+  68   3          }
+  69   2          TF2=0;
+  70   2        }
+  71   1        EXF2=0;
+  72   1      }
+  73          #pragma AREGS
+  74          
+  75          
+  76          /*=========================================================================*/
+  77          /*                          Nastaveni timeoutu                             */
+  78          /*-------------------------------------------------------------------------*/
+  79          void Timeout_Set(uchar Counter, uint Time)
+  80          { if(Counter<No_Timeouts) Timeouts[Counter]=Time;
+  81   1      }
+  82          
+  83          bit Timeout(uchar Counter)
+  84          { if(Timeouts[Counter]) return(0); else return(1);
+  85   1      }
+  86          
+  87          uint Timeout_Value(uchar Counter)
+  88          { return(Timeouts[Counter]);
+  89   1      }
+  90          
+  91          
+  92          // Nastaveni parametru a start casovace 2
+  93          void Time_Init()
+  94          { uchar i;
+  95   1      
+  96   1        RCAP2L=0xFF;   // Timer 2 control low      (FFFFh - 7800h)
+  97   1        RCAP2H=0x87;   // Timer 2 control high
+  98   1      
+  99   1        Timeout_1Sec=CyclesTo1s;   // Napln citac pro 1s
+ 100   1        for(i=0; i<No_Timeouts; i++) Timeouts[i]=0;
+ 101   1      
+ 102   1        // Pri 6-taktovem rezimu, f osc=18432Mhz a hodnote citace 7800h
+ 103   1        // probiha preruseni kazdych 10ms, pokud se tedy nastavi hodnota
+ 104   1        // timeoutu 100, je odpocitavana doba 1s
+ 105   1      
+ 106   1        T2CON=0;       // Timer control
+ 107   1        TR2=1;         // Start citace
+ 108   1        ET2=1;         // Timer 2 - povoleni preruseni
+ 109   1        TF2=0;         // Nulovani priznaku pro vznik preruseni pretecenim casovace
+ 110   1        EXF2=0;        // Nulovani priznaku pro vznik preruseni
+ 111   1      
+ 112   1        Time.Day=0;
+ 113   1        Time.Month=0;
+ 114   1        Time.Year=0;
+ 115   1        Time.Sec=0;
+ 116   1        Time.Min=0;
+ 117   1        Time.Hour=0;
+ 118   1      }
+ 119          
+ 120          
+ 121          
+ 122          // Nastaveni systemovych hodin
+ 123          void Time_SetTime(uchar Hour,uchar Min,uchar Sec)
+ 124          { Time.Hour=Hour;
+ 125   1        Time.Min=Min;
+ 126   1        Time.Sec=Sec;
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 6   
+
+ 127   1      }
+ 128          
+ 129          // Nastaveni systemoveho data
+ 130          void Time_SetDate(uchar Year,uchar Month,uchar Day)
+ 131          { Time.Year=Year;
+ 132   1        Time.Month=Month;
+ 133   1        Time.Day=Day;
+ 134   1      }
+ 135          
+ 136          // Zjisteni aktualni hodiny
+ 137          uchar Time_GetHour()
+ 138          { return(Time.Hour);
+ 139   1      }
+ 140          
+ 141          // Zjisteni aktualni minuty
+ 142          uchar Time_GetMin()
+ 143          { return(Time.Min);
+ 144   1      }
+ 145          
+ 146          // Zjisteni aktualni sekundy
+ 147          uchar Time_GetSec()
+ 148          { return(Time.Sec);
+ 149   1      }
+ 150          
+ 151          // Zjisteni aktualniho roku
+ 152          uchar Time_GetYear()
+ 153          { return(Time.Year);
+ 154   1      }
+ 155          
+ 156          // Zjisteni aktualniho mesice
+ 157          uchar Time_GetMonth()
+ 158          { return(Time.Month);
+ 159   1      }
+ 160          
+ 161          // Zjisteni aktualniho dne
+ 162          uchar Time_GetDay()
+ 163          { return(Time.Day);
+ 164   1      }
+ 165          
+ 166          // Nastaveni aktualni hodiny
+ 167          void Time_SetHour(uchar Hour)
+ 168          { Time.Hour=Hour;
+ 169   1      }
+ 170          
+ 171          // Nastaveni aktualni minuty
+ 172          void Time_SetMin(uchar Min)
+ 173          { Time.Min=Min;
+ 174   1      }
+ 175          
+ 176          // Nastaveni aktualni sekundy
+ 177          void Time_SetSec(uchar Sec)
+ 178          { Time.Sec=Sec;
+ 179   1      }
+ 180          
+ 181          // Nastaveni aktualniho roku
+ 182          void Time_SetYear(uchar Year)
+ 183          { Time.Year=Year;
+ 184   1      }
+ 185          
+ 186          // Nastaveni aktualniho mesice
+ 187          void Time_SetMonth(uchar Month)
+ 188          { Time.Month=Month;
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 7   
+
+ 189   1      }
+ 190          
+ 191          // Nastaveni aktualniho dne
+ 192          void Time_SetDay(uchar Day)
+ 193          { Time.Day=Day;
+ 194   1      }
+ 195          
+ 196          
+ 197          
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 8   
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION int_ct2 (BEGIN)
+0000 C0E0              PUSH    ACC
+0002 C0F0              PUSH    B
+0004 C083              PUSH    DPH
+0006 C082              PUSH    DPL
+0008 C0D0              PUSH    PSW
+000A E8                MOV     A,R0
+000B C0E0              PUSH    ACC
+000D EC                MOV     A,R4
+000E C0E0              PUSH    ACC
+0010 EF                MOV     A,R7
+0011 C0E0              PUSH    ACC
+                                           ; SOURCE LINE # 38
+                                           ; SOURCE LINE # 41
+0013 30CF6E            JNB     TF2,?C0001
+                                           ; SOURCE LINE # 42
+;---- Variable 'i' assigned to Register 'R7' ----
+0016 E4                CLR     A
+0017 FF                MOV     R7,A
+0018         ?C0002:
+                                           ; SOURCE LINE # 43
+0018 EF                MOV     A,R7
+0019 25E0              ADD     A,ACC
+001B 2400        R     ADD     A,#LOW Timeouts
+001D F582              MOV     DPL,A
+001F E4                CLR     A
+0020 3400        R     ADDC    A,#HIGH Timeouts
+0022 F583              MOV     DPH,A
+0024 E0                MOVX    A,@DPTR
+0025 FC                MOV     R4,A
+0026 A3                INC     DPTR
+0027 E0                MOVX    A,@DPTR
+0028 4C                ORL     A,R4
+0029 6013              JZ      ?C0004
+                                           ; SOURCE LINE # 44
+002B EF                MOV     A,R7
+002C 25E0              ADD     A,ACC
+002E 2400        R     ADD     A,#LOW Timeouts
+0030 F582              MOV     DPL,A
+0032 E4                CLR     A
+0033 3400        R     ADDC    A,#HIGH Timeouts
+0035 F583              MOV     DPH,A
+0037 74FF              MOV     A,#0FFH
+0039 F5F0              MOV     B,A
+003B 120000      E     LCALL   ?C?IILDX
+                                           ; SOURCE LINE # 45
+                                           ; SOURCE LINE # 46
+003E         ?C0004:
+003E 0F                INC     R7
+003F BF0AD6            CJNE    R7,#0AH,?C0002
+0042         ?C0003:
+                                           ; SOURCE LINE # 48
+0042 E500        R     MOV     A,Timeout_1Sec
+0044 6004              JZ      ?C0006
+0046 1500        R     DEC     Timeout_1Sec
+0048 8038              SJMP    ?C0007
+004A         ?C0006:
+                                           ; SOURCE LINE # 50
+004A 750064      R     MOV     Timeout_1Sec,#064H
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 9   
+
+                                           ; SOURCE LINE # 52
+004D 7800        R     MOV     R0,#LOW Time+05H
+004F 06                INC     @R0
+                                           ; SOURCE LINE # 53
+0050 E6                MOV     A,@R0
+0051 D3                SETB    C
+0052 943B              SUBB    A,#03BH
+0054 402C              JC      ?C0007
+                                           ; SOURCE LINE # 54
+0056 7600              MOV     @R0,#00H
+0058 18                DEC     R0
+0059 06                INC     @R0
+                                           ; SOURCE LINE # 55
+005A E6                MOV     A,@R0
+005B D3                SETB    C
+005C 943B              SUBB    A,#03BH
+005E 4022              JC      ?C0007
+                                           ; SOURCE LINE # 56
+0060 7600              MOV     @R0,#00H
+0062 18                DEC     R0
+0063 06                INC     @R0
+                                           ; SOURCE LINE # 57
+0064 E6                MOV     A,@R0
+0065 D3                SETB    C
+0066 9417              SUBB    A,#017H
+0068 4018              JC      ?C0007
+                                           ; SOURCE LINE # 58
+006A 7600              MOV     @R0,#00H
+006C 18                DEC     R0
+006D 06                INC     @R0
+                                           ; SOURCE LINE # 59
+006E E6                MOV     A,@R0
+006F D3                SETB    C
+0070 941E              SUBB    A,#01EH
+0072 400E              JC      ?C0007
+                                           ; SOURCE LINE # 60
+0074 7600              MOV     @R0,#00H
+0076 18                DEC     R0
+0077 06                INC     @R0
+                                           ; SOURCE LINE # 61
+0078 E6                MOV     A,@R0
+0079 D3                SETB    C
+007A 940C              SUBB    A,#0CH
+007C 4004              JC      ?C0007
+                                           ; SOURCE LINE # 62
+007E 7600              MOV     @R0,#00H
+0080 18                DEC     R0
+0081 06                INC     @R0
+                                           ; SOURCE LINE # 63
+                                           ; SOURCE LINE # 64
+                                           ; SOURCE LINE # 65
+                                           ; SOURCE LINE # 66
+                                           ; SOURCE LINE # 67
+                                           ; SOURCE LINE # 68
+0082         ?C0007:
+                                           ; SOURCE LINE # 69
+0082 C2CF              CLR     TF2
+                                           ; SOURCE LINE # 70
+0084         ?C0001:
+                                           ; SOURCE LINE # 71
+0084 C2CE              CLR     EXF2
+                                           ; SOURCE LINE # 72
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 10  
+
+0086 D0E0              POP     ACC
+0088 FF                MOV     R7,A
+0089 D0E0              POP     ACC
+008B FC                MOV     R4,A
+008C D0E0              POP     ACC
+008E F8                MOV     R0,A
+008F D0D0              POP     PSW
+0091 D082              POP     DPL
+0093 D083              POP     DPH
+0095 D0F0              POP     B
+0097 D0E0              POP     ACC
+0099 32                RETI    
+             ; FUNCTION int_ct2 (END)
+
+             ; FUNCTION _Timeout_Set (BEGIN)
+;---- Variable 'Counter' assigned to Register 'R7' ----
+;---- Variable 'Time' assigned to Register 'R4/R5' ----
+                                           ; SOURCE LINE # 79
+                                           ; SOURCE LINE # 80
+0000 EF                MOV     A,R7
+0001 C3                CLR     C
+0002 940A              SUBB    A,#0AH
+0004 5011              JNC     ?C0015
+0006 EF                MOV     A,R7
+0007 25E0              ADD     A,ACC
+0009 2400        R     ADD     A,#LOW Timeouts
+000B F582              MOV     DPL,A
+000D E4                CLR     A
+000E 3400        R     ADDC    A,#HIGH Timeouts
+0010 F583              MOV     DPH,A
+0012 EC                MOV     A,R4
+0013 F0                MOVX    @DPTR,A
+0014 A3                INC     DPTR
+0015 ED                MOV     A,R5
+0016 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 81
+0017         ?C0015:
+0017 22                RET     
+             ; FUNCTION _Timeout_Set (END)
+
+             ; FUNCTION _Timeout (BEGIN)
+;---- Variable 'Counter' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 83
+                                           ; SOURCE LINE # 84
+0000 EF                MOV     A,R7
+0001 25E0              ADD     A,ACC
+0003 2400        R     ADD     A,#LOW Timeouts
+0005 F582              MOV     DPL,A
+0007 E4                CLR     A
+0008 3400        R     ADDC    A,#HIGH Timeouts
+000A F583              MOV     DPH,A
+000C E0                MOVX    A,@DPTR
+000D FE                MOV     R6,A
+000E A3                INC     DPTR
+000F E0                MOVX    A,@DPTR
+0010 4E                ORL     A,R6
+0011 6002              JZ      ?C0016
+0013 C3                CLR     C
+0014 22                RET     
+0015         ?C0016:
+0015 D3                SETB    C
+                                           ; SOURCE LINE # 85
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 11  
+
+0016         ?C0017:
+0016 22                RET     
+             ; FUNCTION _Timeout (END)
+
+             ; FUNCTION _Timeout_Value (BEGIN)
+;---- Variable 'Counter' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 87
+                                           ; SOURCE LINE # 88
+0000 EF                MOV     A,R7
+0001 25E0              ADD     A,ACC
+0003 2400        R     ADD     A,#LOW Timeouts
+0005 F582              MOV     DPL,A
+0007 E4                CLR     A
+0008 3400        R     ADDC    A,#HIGH Timeouts
+000A F583              MOV     DPH,A
+000C E0                MOVX    A,@DPTR
+000D FE                MOV     R6,A
+000E A3                INC     DPTR
+000F E0                MOVX    A,@DPTR
+0010 FF                MOV     R7,A
+                                           ; SOURCE LINE # 89
+0011         ?C0019:
+0011 22                RET     
+             ; FUNCTION _Timeout_Value (END)
+
+             ; FUNCTION Time_Init (BEGIN)
+                                           ; SOURCE LINE # 93
+                                           ; SOURCE LINE # 94
+                                           ; SOURCE LINE # 96
+0000 75CAFF            MOV     RCAP2L,#0FFH
+                                           ; SOURCE LINE # 97
+0003 75CB87            MOV     RCAP2H,#087H
+                                           ; SOURCE LINE # 99
+0006 750064      R     MOV     Timeout_1Sec,#064H
+                                           ; SOURCE LINE # 100
+;---- Variable 'i' assigned to Register 'R7' ----
+0009 E4                CLR     A
+000A FF                MOV     R7,A
+000B         ?C0020:
+000B 7F14              MOV     R7,#014H
+000D 900000      R     MOV     DPTR,#Timeouts
+0010 E4                CLR     A
+0011         ?C0038:
+0011 F0                MOVX    @DPTR,A
+0012 A3                INC     DPTR
+0013 DFFC              DJNZ    R7,?C0038
+0015         ?C0021:
+                                           ; SOURCE LINE # 106
+0015 E4                CLR     A
+0016 F5C8              MOV     T2CON,A
+                                           ; SOURCE LINE # 107
+0018 D2CA              SETB    TR2
+                                           ; SOURCE LINE # 108
+001A D2AD              SETB    ET2
+                                           ; SOURCE LINE # 109
+001C C2CF              CLR     TF2
+                                           ; SOURCE LINE # 110
+001E C2CE              CLR     EXF2
+                                           ; SOURCE LINE # 112
+0020 7800        R     MOV     R0,#LOW Time+02H
+0022 F6                MOV     @R0,A
+                                           ; SOURCE LINE # 113
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 12  
+
+0023 18                DEC     R0
+0024 F6                MOV     @R0,A
+                                           ; SOURCE LINE # 114
+0025 18                DEC     R0
+0026 F6                MOV     @R0,A
+                                           ; SOURCE LINE # 115
+0027 7800        R     MOV     R0,#LOW Time+05H
+0029 F6                MOV     @R0,A
+                                           ; SOURCE LINE # 116
+002A 18                DEC     R0
+002B F6                MOV     @R0,A
+                                           ; SOURCE LINE # 117
+002C 18                DEC     R0
+002D F6                MOV     @R0,A
+                                           ; SOURCE LINE # 118
+002E 22                RET     
+             ; FUNCTION Time_Init (END)
+
+             ; FUNCTION _Time_SetTime (BEGIN)
+;---- Variable 'Hour' assigned to Register 'R7' ----
+;---- Variable 'Min' assigned to Register 'R5' ----
+;---- Variable 'Sec' assigned to Register 'R3' ----
+                                           ; SOURCE LINE # 123
+                                           ; SOURCE LINE # 124
+0000 7800        R     MOV     R0,#LOW Time+03H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 125
+0004 08                INC     R0
+0005 A605              MOV     @R0,AR5
+                                           ; SOURCE LINE # 126
+0007 08                INC     R0
+0008 A603              MOV     @R0,AR3
+                                           ; SOURCE LINE # 127
+000A 22                RET     
+             ; FUNCTION _Time_SetTime (END)
+
+             ; FUNCTION _Time_SetDate (BEGIN)
+;---- Variable 'Year' assigned to Register 'R7' ----
+;---- Variable 'Month' assigned to Register 'R5' ----
+;---- Variable 'Day' assigned to Register 'R3' ----
+                                           ; SOURCE LINE # 130
+                                           ; SOURCE LINE # 131
+0000 7800        R     MOV     R0,#LOW Time
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 132
+0004 08                INC     R0
+0005 A605              MOV     @R0,AR5
+                                           ; SOURCE LINE # 133
+0007 08                INC     R0
+0008 A603              MOV     @R0,AR3
+                                           ; SOURCE LINE # 134
+000A 22                RET     
+             ; FUNCTION _Time_SetDate (END)
+
+             ; FUNCTION Time_GetHour (BEGIN)
+                                           ; SOURCE LINE # 137
+                                           ; SOURCE LINE # 138
+0000 7800        R     MOV     R0,#LOW Time+03H
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 139
+0004         ?C0026:
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 13  
+
+0004 22                RET     
+             ; FUNCTION Time_GetHour (END)
+
+             ; FUNCTION Time_GetMin (BEGIN)
+                                           ; SOURCE LINE # 142
+                                           ; SOURCE LINE # 143
+0000 7800        R     MOV     R0,#LOW Time+04H
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 144
+0004         ?C0027:
+0004 22                RET     
+             ; FUNCTION Time_GetMin (END)
+
+             ; FUNCTION Time_GetSec (BEGIN)
+                                           ; SOURCE LINE # 147
+                                           ; SOURCE LINE # 148
+0000 7800        R     MOV     R0,#LOW Time+05H
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 149
+0004         ?C0028:
+0004 22                RET     
+             ; FUNCTION Time_GetSec (END)
+
+             ; FUNCTION Time_GetYear (BEGIN)
+                                           ; SOURCE LINE # 152
+                                           ; SOURCE LINE # 153
+0000 7800        R     MOV     R0,#LOW Time
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 154
+0004         ?C0029:
+0004 22                RET     
+             ; FUNCTION Time_GetYear (END)
+
+             ; FUNCTION Time_GetMonth (BEGIN)
+                                           ; SOURCE LINE # 157
+                                           ; SOURCE LINE # 158
+0000 7800        R     MOV     R0,#LOW Time+01H
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 159
+0004         ?C0030:
+0004 22                RET     
+             ; FUNCTION Time_GetMonth (END)
+
+             ; FUNCTION Time_GetDay (BEGIN)
+                                           ; SOURCE LINE # 162
+                                           ; SOURCE LINE # 163
+0000 7800        R     MOV     R0,#LOW Time+02H
+0002 E6                MOV     A,@R0
+0003 FF                MOV     R7,A
+                                           ; SOURCE LINE # 164
+0004         ?C0031:
+0004 22                RET     
+             ; FUNCTION Time_GetDay (END)
+
+             ; FUNCTION _Time_SetHour (BEGIN)
+;---- Variable 'Hour' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 167
+                                           ; SOURCE LINE # 168
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 14  
+
+0000 7800        R     MOV     R0,#LOW Time+03H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 169
+0004 22                RET     
+             ; FUNCTION _Time_SetHour (END)
+
+             ; FUNCTION _Time_SetMin (BEGIN)
+;---- Variable 'Min' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 172
+                                           ; SOURCE LINE # 173
+0000 7800        R     MOV     R0,#LOW Time+04H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 174
+0004 22                RET     
+             ; FUNCTION _Time_SetMin (END)
+
+             ; FUNCTION _Time_SetSec (BEGIN)
+;---- Variable 'Sec' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 177
+                                           ; SOURCE LINE # 178
+0000 7800        R     MOV     R0,#LOW Time+05H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 179
+0004 22                RET     
+             ; FUNCTION _Time_SetSec (END)
+
+             ; FUNCTION _Time_SetYear (BEGIN)
+;---- Variable 'Year' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 182
+                                           ; SOURCE LINE # 183
+0000 7800        R     MOV     R0,#LOW Time
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 184
+0004 22                RET     
+             ; FUNCTION _Time_SetYear (END)
+
+             ; FUNCTION _Time_SetMonth (BEGIN)
+;---- Variable 'Month' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 187
+                                           ; SOURCE LINE # 188
+0000 7800        R     MOV     R0,#LOW Time+01H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 189
+0004 22                RET     
+             ; FUNCTION _Time_SetMonth (END)
+
+             ; FUNCTION _Time_SetDay (BEGIN)
+;---- Variable 'Day' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 192
+                                           ; SOURCE LINE # 193
+0000 7800        R     MOV     R0,#LOW Time+02H
+0002 A607              MOV     @R0,AR7
+                                           ; SOURCE LINE # 194
+0004 22                RET     
+             ; FUNCTION _Time_SetDay (END)
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    348    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     20    ----
+C51 COMPILER V6.12  TIME                                                                   10/23/2005 15:48:33 PAGE 15  
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =      6    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

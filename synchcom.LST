@@ -1,0 +1,2205 @@
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE SYNCHCOM
+OBJECT MODULE PLACED IN synchcom.OBJ
+COMPILER INVOKED BY: E:\PRGJAZ\CPU51\C51_v612\C51\BIN\C51.EXE synchcom.C51 DEBUG CODE LISTINCLUDE
+
+stmt level    source
+
+   1          
+   2          //-------------------------------------------------------------------------//
+   3          /////////////////////////////////////////////////////////////////////////////
+   4          // +---------------------------------------------------------------------+ //
+   5          // |               Driver synchronniho poloduplex rozhrani (6bit)        | //
+   6          // |                  -------------------------------------              | //
+   7          // |                       Verze 1.03  Build 051008                      | //
+   8          // |                         Tomas Hujer (c) 2005                        | //
+   9          // +---------------------------------------------------------------------+ //
+  10          // | Driver umi komunikovat pomoci 6 dratu, 2 bity jsou ridici a         | //
+  11          // | 4 datove. Kazdy smer komunikace ma svuj handshake ovladany pouze    | //
+  12          // | jednim zarizenim. Na datovych bitech se v casovem multiplexu        | //
+  13          // | prenasi informace o aktualne prenasenem niblu (H/L) a data.         | //
+  14          // | Pokud probiha vysilani, je prijem blokovan, aby nedoslo ke zpetne   | //
+  15          // | smycce.                                                             | //
+  16          // +---------------------------------------------------------------------+ //
+  17          /////////////////////////////////////////////////////////////////////////////
+  18          //-------------------------------------------------------------------------//
+  19          #include "reg52.h"
+   1      =1  /*--------------------------------------------------------------------------
+   2      =1  REG52.H
+   3      =1  
+   4      =1  Header file for generic 80C52 and 80C32 microcontroller.
+   5      =1  Copyright (c) 1988-2001 Keil Elektronik GmbH and Keil Software, Inc.
+   6      =1  All rights reserved.
+   7      =1  --------------------------------------------------------------------------*/
+   8      =1  
+   9      =1  /*  BYTE Registers  */
+  10      =1  sfr P0    = 0x80;
+  11      =1  sfr P1    = 0x90;
+  12      =1  sfr P2    = 0xA0;
+  13      =1  sfr P3    = 0xB0;
+  14      =1  sfr PSW   = 0xD0;
+  15      =1  sfr ACC   = 0xE0;
+  16      =1  sfr B     = 0xF0;
+  17      =1  sfr SP    = 0x81;
+  18      =1  sfr DPL   = 0x82;
+  19      =1  sfr DPH   = 0x83;
+  20      =1  sfr PCON  = 0x87;
+  21      =1  sfr TCON  = 0x88;
+  22      =1  sfr TMOD  = 0x89;
+  23      =1  sfr TL0   = 0x8A;
+  24      =1  sfr TL1   = 0x8B;
+  25      =1  sfr TH0   = 0x8C;
+  26      =1  sfr TH1   = 0x8D;
+  27      =1  sfr IE    = 0xA8;
+  28      =1  sfr IP    = 0xB8;
+  29      =1  sfr SCON  = 0x98;
+  30      =1  sfr SBUF  = 0x99;
+  31      =1  
+  32      =1  /*  8052 Extensions  */
+  33      =1  sfr T2CON  = 0xC8;
+  34      =1  sfr RCAP2L = 0xCA;
+  35      =1  sfr RCAP2H = 0xCB;
+  36      =1  sfr TL2    = 0xCC;
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 2   
+
+  37      =1  sfr TH2    = 0xCD;
+  38      =1  
+  39      =1  
+  40      =1  /*  BIT Registers  */
+  41      =1  /*  PSW  */
+  42      =1  sbit CY    = PSW^7;
+  43      =1  sbit AC    = PSW^6;
+  44      =1  sbit F0    = PSW^5;
+  45      =1  sbit RS1   = PSW^4;
+  46      =1  sbit RS0   = PSW^3;
+  47      =1  sbit OV    = PSW^2;
+  48      =1  sbit P     = PSW^0; //8052 only
+  49      =1  
+  50      =1  /*  TCON  */
+  51      =1  sbit TF1   = TCON^7;
+  52      =1  sbit TR1   = TCON^6;
+  53      =1  sbit TF0   = TCON^5;
+  54      =1  sbit TR0   = TCON^4;
+  55      =1  sbit IE1   = TCON^3;
+  56      =1  sbit IT1   = TCON^2;
+  57      =1  sbit IE0   = TCON^1;
+  58      =1  sbit IT0   = TCON^0;
+  59      =1  
+  60      =1  /*  IE  */
+  61      =1  sbit EA    = IE^7;
+  62      =1  sbit ET2   = IE^5; //8052 only
+  63      =1  sbit ES    = IE^4;
+  64      =1  sbit ET1   = IE^3;
+  65      =1  sbit EX1   = IE^2;
+  66      =1  sbit ET0   = IE^1;
+  67      =1  sbit EX0   = IE^0;
+  68      =1  
+  69      =1  /*  IP  */
+  70      =1  sbit PT2   = IP^5;
+  71      =1  sbit PS    = IP^4;
+  72      =1  sbit PT1   = IP^3;
+  73      =1  sbit PX1   = IP^2;
+  74      =1  sbit PT0   = IP^1;
+  75      =1  sbit PX0   = IP^0;
+  76      =1  
+  77      =1  /*  P3  */
+  78      =1  sbit RD    = P3^7;
+  79      =1  sbit WR    = P3^6;
+  80      =1  sbit T1    = P3^5;
+  81      =1  sbit T0    = P3^4;
+  82      =1  sbit INT1  = P3^3;
+  83      =1  sbit INT0  = P3^2;
+  84      =1  sbit TXD   = P3^1;
+  85      =1  sbit RXD   = P3^0;
+  86      =1  
+  87      =1  /*  SCON  */
+  88      =1  sbit SM0   = SCON^7;
+  89      =1  sbit SM1   = SCON^6;
+  90      =1  sbit SM2   = SCON^5;
+  91      =1  sbit REN   = SCON^4;
+  92      =1  sbit TB8   = SCON^3;
+  93      =1  sbit RB8   = SCON^2;
+  94      =1  sbit TI    = SCON^1;
+  95      =1  sbit RI    = SCON^0;
+  96      =1  
+  97      =1  /*  P1  */
+  98      =1  sbit T2EX  = P1^1; // 8052 only
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 3   
+
+  99      =1  sbit T2    = P1^0; // 8052 only
+ 100      =1               
+ 101      =1  /*  T2CON  */
+ 102      =1  sbit TF2    = T2CON^7;
+ 103      =1  sbit EXF2   = T2CON^6;
+ 104      =1  sbit RCLK   = T2CON^5;
+ 105      =1  sbit TCLK   = T2CON^4;
+ 106      =1  sbit EXEN2  = T2CON^3;
+ 107      =1  sbit TR2    = T2CON^2;
+ 108      =1  sbit C_T2   = T2CON^1;
+ 109      =1  sbit CP_RL2 = T2CON^0;
+  20          #include "shorttyp.h"          // Zkraceni definice typu
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  #define ulong unsigned long
+  21          #include "time.h"              //
+   1      =1  #define uchar unsigned char
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void Time_SetTime(uchar Hour,uchar Min,uchar Sec);
+   5      =1  extern void Time_SetDate(uchar Year,uchar Month,uchar Day);
+   6      =1  extern uchar Time_GetHour();
+   7      =1  extern uchar Time_GetMin();
+   8      =1  extern uchar Time_GetSec();
+   9      =1  extern uchar Time_GetYear();
+  10      =1  extern uchar Time_GetMonth();
+  11      =1  extern uchar Time_GetDay();
+  12      =1  extern void Time_SetHour(uchar Hour);
+  13      =1  extern void Time_SetMin(uchar Min);
+  14      =1  extern void Time_SetSec(uchar Sec);
+  15      =1  extern void Time_SetYear(uchar Year);
+  16      =1  extern void Time_SetMonth(uchar Month);
+  17      =1  extern void Time_SetDay(uchar Day);
+  18      =1  extern void Time_Init();
+  19      =1  
+  20      =1  extern bit  bTimeout_1Sec;
+  21      =1  extern void Timeout_Set(uchar Counter, uint Time);
+  22      =1  extern bit  Timeout(uchar Counter);
+  23      =1  extern uint Timeout_Value(uchar Counter);
+  24      =1  
+  22          #include "time_def.k"          //
+   1      =1  
+   2      =1  // Definice pro textovy report
+   3      =1  #define  cTime_TimeoutsReport  1
+   4      =1  #define  cTime_SysTimeReport   2
+   5      =1  
+   6      =1  // Prirazeni timeoutu rutinam
+   7      =1  #define cMain_TimeGuard          0  // Main:     Spousteni casovych akci
+   8      =1  #define cMain_Delay              1  // Main:     Akce "Zpozdeni"
+   9      =1  #define cAction_Timeout          2  // Main:     Process driver
+  10      =1  #define cAction_Timeout2         3  // Main:     Process driver 2
+  11      =1  #define cEEP_WriteData           4  // EEPROM:   Sekvencni zapis dat
+  12      =1  #define cEEP_Clear               5  // EEPROM:   Sekvencni vymazani
+  13      =1  #define cHCOM_IntUp              6  // HCOM:     Konec vysilani bez preruseni
+  14      =1  #define cLoopTest                7  // LoopTest: Test hlavni smycky
+  15      =1  #define cLED_Timer               8  // LED:      Rizeni doby svitu signalizacnich LED
+  16      =1  #define cSYNCH                   9  // SYNCH:    Synchronni komunikace
+  17      =1  // ----------------------------
+  18      =1  #define No_Timeouts             10  // Pocet timeoutu celkem
+  19      =1  
+  23          #include "leds.h"              //
+   1      =1  #define uchar unsigned char
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 4   
+
+   2      =1  #define uint unsigned int
+   3      =1  
+   4      =1  extern void  LED_ON(uchar LED_ID);
+   5      =1  extern void  LED_OFF(uchar LED_ID);
+   6      =1  extern void  LED_Stay(uchar LED_ID);
+   7      =1  extern void  LED_Init();
+   8      =1  extern void  LED_Proc();
+   9      =1  extern uchar LED_GetStayTime(uchar LED_ID);
+  24          #include "leds.k"              //
+   1      =1  
+   2      =1  /*-------------------------------------------------------------------------*/
+   3      =1  // Prirazeni ID k LED
+   4      =1  #define cLED0             0
+   5      =1  #define cLED1             1
+   6      =1  #define cLED2             2
+   7      =1  #define cLED3             3
+   8      =1  #define cLED4             4
+   9      =1  #define cLED5             5
+  10      =1  #define cLED6             6
+  11      =1  #define cLED7             7
+  12      =1  
+  13      =1  #define cLED_RD_HCOM      0
+  14      =1  #define cLED_WR_HCOM      1
+  15      =1  #define cLED_RD_EEP       2
+  16      =1  #define cLED_WR_EEP       3
+  17      =1  #define cLED_RD_RG        4
+  18      =1  #define cLED_WR_RG        5
+  19      =1  #define cLED_RD_SYNCH     6
+  20      =1  #define cLED_WR_SYNCH     7
+  21      =1  
+  22      =1  #define cLED_StayTime     5       // Doba svitu LED v rezimu Stay (*100ms)
+  23      =1  
+  25          #include "pins.h"              // Definice pinu procesoru
+   1      =1  
+   2      =1  // Konfigurace HW prepinacu
+   3      =1  sbit    swtchTestMode   = P1^0;    // Testovaci mod, SMS nejsou skutecne odeslany
+   4      =1  sbit    swtchBridge     = P1^1;    // Prepinac komunikace - 232<->485 bridge
+   5      =1  sbit    swtchDebugMsgs  = P1^2;    // Povoleni ladicich zprav
+   6      =1  sbit    swtchConfigMode = P1^3;    // Konfiguracni mod
+   7      =1  
+   8      =1  // Prirazeni ovladacich bitu k pinum
+   9      =1  sbit    SCL             = P1^4;    // Sit - Komunikace 485 (Hodiny)
+  10      =1  sbit    SDA             = P1^5;    // Sit - Komunikace 485 (Data)
+  11      =1  sbit    M_S             = P1^7;    // Propojeni komunikace
+  12      =1  sbit    IGN             = P2^7;    // Ignition GSM modemu
+  13      =1  #define RXD1              INT0     // Emulovany serial (Prijem)
+  14      =1  #define TXD1                T1     // Emulovany serial (Vysilani)
+  15      =1  #define DIR1                T0     // T0 ... prepinani smeru toku dat
+  16      =1  #define RXM               INT1
+  17      =1  
+  18      =1  // Prirazeni pinu pro synchronni komunikaci s externim zarizenim
+  19      =1  sbit pin_HSI = P2^0;
+  20      =1  sbit pin_HSO = P2^1;
+  21      =1  sbit pin_D0  = P2^2;
+  22      =1  sbit pin_D1  = P2^3;
+  23      =1  sbit pin_D2  = P2^4;
+  24      =1  sbit pin_D3  = P2^5;
+  25      =1  
+  26      =1  // Prirazeni LED
+  27      =1  sbit pin_LED0 = P0^0;    // Pin pro LED0
+  28      =1  sbit pin_LED1 = P0^1;    // Pin pro LED1
+  29      =1  sbit pin_LED2 = P0^2;    // Pin pro LED2
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 5   
+
+  30      =1  sbit pin_LED3 = P0^3;    // Pin pro LED3
+  31      =1  sbit pin_LED4 = P0^4;    // Pin pro LED4
+  32      =1  sbit pin_LED5 = P0^5;    // Pin pro LED5
+  33      =1  sbit pin_LED6 = P0^6;    // Pin pro LED4
+  34      =1  sbit pin_LED7 = P0^7;    // Pin pro LED5
+  35      =1  
+  26          #include "synchcom.k"          // Vlastni definice
+   1      =1  
+   2      =1  
+   3      =1  //------------------------------------------------------------------------------
+   4      =1  #define cSrcBuffers       5          // Velikost pole pointeru pro odesilani dat
+   5      =1  #define cRecBufSize      10          // Velikost bufferu pro prijem dat
+   6      =1  #define cLogBufSize     160          // Velikost rotacniho bufferu pro logovani
+   7      =1  //------------------------------------------------------------------------------
+   8      =1  
+  27          #include "synchcom.h"
+   1      =1  
+   2      =1  //------------------------------------------------------------------------------
+   3      =1  extern uchar SYNCH_SendMsg(uchar *pSrcBuf, uchar SrcBytes);
+   4      =1  extern uchar SYNCH_GetSrcByte();
+   5      =1  extern void  SYNCH_SendByte();
+   6      =1  extern bit   SYNCH_SaveNibble(bit H_L);
+   7      =1  extern void  SYNCH_GetByte();
+   8      =1  extern uchar SYNCH_GetChar();
+   9      =1  extern void  SYNCH_Init();
+  10      =1  extern void  SYNCH_Proc();
+  11      =1  
+  12      =1  extern bit SYNCH_LogWriteChar(uchar Ch);
+  13      =1  extern void SYNCH_LogWriteString(uchar *Text, uchar MaxSize);
+  14      =1  
+  15      =1  extern uchar xdata SYNCH_BytesInRecBuf;
+  16      =1  extern uchar xdata SYNCH_BytesInSndBuf;
+  17      =1  extern uchar xdata SYNCH_BytesInLogBuf;
+  18      =1  extern bit         SYNCH_RIBUF;
+  19      =1  
+  20      =1  extern uchar xdata sSYNCH_RecStep;
+  21      =1  extern uchar xdata sSYNCH_SndStep;
+  22      =1  extern uchar xdata SYNCH_RecBufIx_w;
+  23      =1  extern uchar xdata SYNCH_RecBufIx_r;
+  24      =1  extern uchar xdata SYNCH_LogBufIx_w;
+  25      =1  extern uchar xdata SYNCH_LogBufIx_r;
+  26      =1  extern uchar xdata SYNCH_SrcPtrIx_w;
+  27      =1  extern uchar xdata SYNCH_SrcPtrIx_r;
+  28      =1  extern uchar xdata SYNCH_BytesInSndBuf;
+  29      =1  extern uchar xdata SYNCH_BytesInRecBuf;
+  30      =1  extern uchar xdata SYNCH_ByteInLogBuf;
+  31      =1  extern uchar xdata SYNCH_PtrInBuf;
+  32      =1  
+  33      =1  //------------------------------------------------------------------------------
+  28          
+  29          //------------------------------------------------------------------------------
+  30          uchar * xdata SYNCH_ptr_Src[cSrcBuffers]; // Pole pointeru na data k vysilani
+  31          uchar xdata SYNCH_SrcBytes[cSrcBuffers];  // Pocet byte pro odeslani
+  32          uchar xdata SYNCH_SrcPtrIx_w;             // Aktualni index pole poiteru pro zapis
+  33          uchar xdata SYNCH_SrcPtrIx_r;             // Aktualni index pole poiteru pro cteni
+  34          uchar xdata SYNCH_PtrInBuf;               // Pocet pointeru v bufferu
+  35          uchar xdata SYNCH_SrcIndex;               // Index zdrojovych dat
+  36          uchar xdata SYNCH_BytesInSndBuf;          // Pocet znaku ve zdrojovem bufferu
+  37          
+  38          uchar xdata SYNCH_RecBuf[cRecBufSize];    // Buffer pro prijem dat
+  39          uchar xdata SYNCH_RecBufIx_w;             // Aktualni index recbuf pro zapis
+  40          uchar xdata SYNCH_RecBufIx_r;             // Aktualni index recbuf pro cteni
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 6   
+
+  41          uchar xdata SYNCH_BytesInRecBuf;          // Pocet byte v prijimacim bufferu
+  42          bit         SYNCH_Rec_HL;                 // H/L nibble
+  43          bit         SYNCH_RIBUF;                  // flag pro prijata data v bufferu
+  44          
+  45          uchar xdata SYNCH_LogBuf[cLogBufSize];    // Buffer pro logovani
+  46          uchar xdata SYNCH_LogBufIx_w;             // Index pro zapis do log bufferu
+  47          uchar xdata SYNCH_LogBufIx_r;             // Index pro cteni z log bufferu
+  48          uchar xdata SYNCH_ByteInLogBuf;           // Pocet byte v log bufferu
+  49          bit         bSYNCH_LogBufOverflow;        // Flag preteceni log bufferu
+  50          
+  51          uchar xdata sSYNCH_RecStep;               // Ridici promenna pro prijem dat
+  52          uchar xdata sSYNCH_SndStep;               // Ridici promenna pro vysilani dat
+  53          
+  54          //------------------------------------------------------------------------------
+  55          
+  56          uchar SYNCH_SendMsg(uchar *pSrcBuf, uchar SrcBytes)
+  57          { bit State;
+  58   1      
+  59   1        State=0;
+  60   1        if(SYNCH_PtrInBuf < cSrcBuffers) // Pokud je v bufferu misto
+  61   1        { SYNCH_SrcPtrIx_w%=cSrcBuffers; // Rotuj buffer
+  62   2          SYNCH_ptr_Src[SYNCH_SrcPtrIx_w]=pSrcBuf;   // Zkopiruj pointer na odesilana data
+  63   2          SYNCH_SrcBytes[SYNCH_SrcPtrIx_w]=SrcBytes; // Zkopiruj pocet odesilanych byte
+  64   2      
+  65   2          SYNCH_PtrInBuf++;             // Inc pocet pointeru v poli
+  66   2          SYNCH_SrcPtrIx_w++;           // Posun ukazatel na dalsi misto v poli pointeru
+  67   2          State=1;
+  68   2        }
+  69   1        return(State);
+  70   1      }
+  71          
+  72          
+  73          // Zapis znaku do log bufferu
+  74          bit SYNCH_LogWriteChar(uchar Ch)
+  75          { if(SYNCH_ByteInLogBuf < cLogBufSize)
+  76   1        { SYNCH_LogBufIx_w %= cLogBufSize;       // Rotuj index, je-li na konci bufferu
+  77   2          SYNCH_LogBuf[SYNCH_LogBufIx_w]=Ch;     // Zapis znak do sndbuf
+  78   2          SYNCH_LogBufIx_w++;                    // Posun index
+  79   2          SYNCH_ByteInLogBuf++;                  // Zvys pocet znaku v sndbuf
+  80   2          return(1);
+  81   2        }
+  82   1        else
+  83   1        { bSYNCH_LogBufOverflow=1;             // Nastav flag preteceni bufferu
+  84   2          return(0);
+  85   2        }
+  86   1      }
+  87          
+  88          
+  89          // Zapis retezce do log buf
+  90          void SYNCH_LogWriteString(uchar *Text, uchar MaxSize)
+  91          { uchar i;
+  92   1      
+  93   1        for(i=0; (Text[i] && (i<MaxSize)); i++)
+  94   1        {
+  95   2          if(~SYNCH_LogWriteChar(Text[i])) break;
+  96   2        }
+  97   1      }
+  98          
+  99          
+ 100          // Nacti znak z Log buf
+ 101          uchar SYNCH_LogGetChar()
+ 102          { uchar Out;
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 7   
+
+ 103   1      
+ 104   1        Out=0;
+ 105   1        if(SYNCH_ByteInLogBuf)                  // Pokud je znak v LogBuf
+ 106   1        { SYNCH_LogBufIx_r %= cLogBufSize;      // Pripadne pretoc index
+ 107   2          Out=SYNCH_LogBuf[SYNCH_LogBufIx_r];   // Odesli znak z sndbuf
+ 108   2        }
+ 109   1        return(Out);
+ 110   1      }
+ 111          
+ 112          
+ 113          void SYNCH_LogNextChar()
+ 114          {
+ 115   1        if(SYNCH_ByteInLogBuf)                  // Pokud je znak v LogBuf
+ 116   1        { SYNCH_LogBufIx_r %= cLogBufSize;      // Pripadne pretoc index
+ 117   2          SYNCH_LogBufIx_r++;                   // Posun index
+ 118   2          SYNCH_ByteInLogBuf--;                 // Sniz pocet znaku v sndbuf
+ 119   2        }
+ 120   1      }
+ 121          
+ 122          
+ 123          void SYNCH_NextSrcByte()
+ 124          {
+ 125   1        SYNCH_SrcIndex++;       // Posun index v bufferu
+ 126   1        SYNCH_GetSrcByte();  // Nech nastavit flagy a indexy pro novy index
+ 127   1      }
+ 128          
+ 129          
+ 130          uchar SYNCH_GetSrcByte()
+ 131          { uchar OutChar;
+ 132   1        bit   Repeat;
+ 133   1      
+ 134   1        Repeat=1;
+ 135   1        OutChar=0;
+ 136   1      
+ 137   1        while(Repeat)
+ 138   1        { SYNCH_SrcPtrIx_r%=cSrcBuffers;        // Rotuj index pro cteni z pointeru
+ 139   2      
+ 140   2          // Pokud je neco na pointeru
+ 141   2          if(SYNCH_SrcBytes[SYNCH_SrcPtrIx_r])
+ 142   2          {
+ 143   3            // Aktualizuj pocet znaku v bufferu
+ 144   3            SYNCH_BytesInSndBuf = (SYNCH_SrcBytes[SYNCH_SrcPtrIx_r] - SYNCH_SrcIndex);
+ 145   3      
+ 146   3            // Pokud je neco na pointeru
+ 147   3            if(SYNCH_BytesInSndBuf)
+ 148   3            {
+ 149   4              // Nacti znak z pointeru v poli pointeru
+ 150   4              OutChar=SYNCH_ptr_Src[SYNCH_SrcPtrIx_r][SYNCH_SrcIndex];
+ 151   4              Repeat=0;                      // Nuluj flag pro dalsi pointer
+ 152   4            }
+ 153   3            else // jinak pokracuj dalsim pointerem
+ 154   3            {
+ 155   4              if(SYNCH_PtrInBuf)              // Pokud je jeste neco v bufferu
+ 156   4              { SYNCH_SrcPtrIx_r++;           // Index na dalsi prvek v poli pointeru
+ 157   5                SYNCH_PtrInBuf--;             // Dec pocet prvku v poli
+ 158   5              }
+ 159   4              else
+ 160   4              {
+ 161   5                Repeat=0;
+ 162   5                SYNCH_BytesInSndBuf=0;        // Nuluj pocet byte na pointeru
+ 163   5              }
+ 164   4      
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 8   
+
+ 165   4              SYNCH_SrcIndex=0;             // Nuluj index zdroj dat
+ 166   4            }
+ 167   3          }
+ 168   2          else
+ 169   2          {
+ 170   3            Repeat=0;
+ 171   3            SYNCH_BytesInSndBuf=0;          // Nuluj pocet byte na pointeru
+ 172   3            SYNCH_SrcIndex=0;               // Nuluj index zdroj dat
+ 173   3      
+ 174   3            if(SYNCH_PtrInBuf)
+ 175   3            {
+ 176   4              SYNCH_SrcPtrIx_r++;           // Index na dalsi prvek v poli pointeru
+ 177   4              SYNCH_PtrInBuf--;             // Dec pocet prvku v poli
+ 178   4            }
+ 179   3          }
+ 180   2        }
+ 181   1        return(OutChar);
+ 182   1      }
+ 183          
+ 184          
+ 185          void SYNCH_SendByte()
+ 186          { uchar OutChar=0;
+ 187   1      
+ 188   1        #define cRS_ResetComm  50   // Stav - Reset komunikace - nastaveni vstupu na "1"
+ 189   1        #define cCommTimeout  200   // Komunikacni
+ 190   1      
+ 191   1        switch(sSYNCH_SndStep)
+ 192   1        {
+ 193   2          case 1:
+ 194   2            LED_Stay(cLED_WR_SYNCH);
+ 195   2      
+ 196   2      //      SYNCH_SrcPtrIx_r%=cSrcBuffers;        // Rotuj index pro cteni z pointeru
+ 197   2      
+ 198   2            // Aktualizuj pocet znaku v bufferu
+ 199   2      //      SYNCH_BytesInSndBuf = (SYNCH_SrcBytes[SYNCH_SrcPtrIx_r] - SYNCH_SrcIndex);
+ 200   2      
+ 201   2            Timeout_Set(cSYNCH, cCommTimeout);
+ 202   2            sSYNCH_SndStep++;
+ 203   2            break;
+ 204   2      
+ 205   2          //-------------- High nibble ------------------
+ 206   2          case 2:
+ 207   2            // Pokud je neco k odeslani,
+ 208   2            // Pro jistotu nastav HSI a HSO -> 1 hanshakes
+ 209   2            if((SYNCH_PtrInBuf) || (SYNCH_ByteInLogBuf))
+ 210   2            { LED_Stay(cLED_WR_SYNCH);
+ 211   3      
+ 212   3              pin_HSO=1;
+ 213   3              pin_HSI=1;
+ 214   3      
+ 215   3              Timeout_Set(cSYNCH, cCommTimeout);
+ 216   3              sSYNCH_SndStep++;
+ 217   3            }
+ 218   2      
+ 219   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 220   2            break;
+ 221   2      
+ 222   2          case 3:
+ 223   2            // Pokud je HSI i HSO v 1,
+ 224   2            // zapis do D0 ktery nibble se bude odesilat
+ 225   2            // shod HSO->0 handshake
+ 226   2            if(pin_HSO && pin_HSI)
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 9   
+
+ 227   2            {
+ 228   3              LED_Stay(cLED_WR_SYNCH);
+ 229   3      
+ 230   3              pin_D0=1;     // Nastav priznak pro H nibble znaku
+ 231   3              pin_D1=0;
+ 232   3              pin_D2=0;
+ 233   3              pin_D3=0;
+ 234   3              pin_HSI=1;
+ 235   3              pin_HSO=0;    // Shod handshake
+ 236   3              Timeout_Set(cSYNCH, cCommTimeout);
+ 237   3              sSYNCH_SndStep++;
+ 238   3            }
+ 239   2      
+ 240   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 241   2            break;
+ 242   2      
+ 243   2          case 4:
+ 244   2            // Cekej na shozeni HSI
+ 245   2            if(~pin_HSI)
+ 246   2            {
+ 247   3              LED_Stay(cLED_WR_SYNCH);
+ 248   3      
+ 249   3              // Pokud je neco v log bufferu
+ 250   3              if(SYNCH_ByteInLogBuf)
+ 251   3              { // Zapis na sbernici znak z Log bufferu
+ 252   4                OutChar=SYNCH_LogGetChar();
+ 253   4              }
+ 254   3              else
+ 255   3              { // Zapis data na sbernici a nastav HSO->1
+ 256   4                OutChar=SYNCH_GetSrcByte();  // Nacti aktualni znak pro odeslani
+ 257   4              }
+ 258   3              pin_D0=OutChar & 16;          // Nastav horni nibble znaku
+ 259   3              pin_D1=OutChar & 32;
+ 260   3              pin_D2=OutChar & 64;
+ 261   3              pin_D3=OutChar & 128;
+ 262   3              pin_HSO=1;                    // Nastav handshake
+ 263   3      
+ 264   3              Timeout_Set(cSYNCH, cCommTimeout);
+ 265   3              sSYNCH_SndStep++;
+ 266   3            }
+ 267   2      
+ 268   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 269   2            break;
+ 270   2      
+ 271   2          //-------------- Low nibble ------------------
+ 272   2          case 5:
+ 273   2            // Pokud je HSI i HSO v 1,
+ 274   2            // zapis do D0 dolni nibble
+ 275   2            // shod HSO->0 handshake
+ 276   2            if(pin_HSO && pin_HSI)
+ 277   2            { LED_Stay(cLED_WR_SYNCH);
+ 278   3      
+ 279   3              pin_D0=0;     // Nastav priznak pro L nibble znaku
+ 280   3              pin_D1=0;
+ 281   3              pin_D2=0;
+ 282   3              pin_D3=0;
+ 283   3              pin_HSI=1;
+ 284   3              pin_HSO=0;    // Shod handshake
+ 285   3              Timeout_Set(cSYNCH, cCommTimeout);
+ 286   3              sSYNCH_SndStep++;
+ 287   3            }
+ 288   2      
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 10  
+
+ 289   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 290   2            break;
+ 291   2      
+ 292   2          case 6:
+ 293   2            // Cekej na shozeni HSI
+ 294   2            if(~pin_HSI)
+ 295   2            {
+ 296   3              LED_Stay(cLED_WR_SYNCH);
+ 297   3      
+ 298   3              // Pokud je neco v log bufferu
+ 299   3              if(SYNCH_ByteInLogBuf)
+ 300   3              { // Zapis na sbernici znak z Log bufferu
+ 301   4                OutChar=SYNCH_LogGetChar();
+ 302   4                SYNCH_LogNextChar();         // Pouze u druheho nibblu !!!
+ 303   4              }
+ 304   3              else
+ 305   3              { // Zapis data na sbernici a nastav HSO->1
+ 306   4                OutChar=SYNCH_GetSrcByte();  // Nacti aktualni znak pro odeslani
+ 307   4                SYNCH_NextSrcByte();         // Posun index zdroje na dalsi byte
+ 308   4              }
+ 309   3              pin_D0=OutChar & 1;           // Nastav dolni nibble
+ 310   3              pin_D1=OutChar & 2;
+ 311   3              pin_D2=OutChar & 4;
+ 312   3              pin_D3=OutChar & 8;
+ 313   3              pin_HSO=1;                    // Nastav handshake
+ 314   3      
+ 315   3              Timeout_Set(cSYNCH, cCommTimeout);
+ 316   3              sSYNCH_SndStep++;
+ 317   3            }
+ 318   2      
+ 319   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 320   2            break;
+ 321   2      
+ 322   2          case  7:
+ 323   2            // Cekej na nastaveni HSI=1
+ 324   2            if(pin_HSI)
+ 325   2            {
+ 326   3              // Nastav vstupy
+ 327   3              pin_HSO=1;
+ 328   3              pin_HSI=1;
+ 329   3              pin_D0=1;
+ 330   3              pin_D1=1;
+ 331   3              pin_D2=1;
+ 332   3              pin_D3=1;
+ 333   3      
+ 334   3              sSYNCH_SndStep=0;
+ 335   3            }
+ 336   2      
+ 337   2            if(Timeout(cSYNCH)) sSYNCH_SndStep=cRS_ResetComm;
+ 338   2            break;
+ 339   2      
+ 340   2          case cRS_ResetComm:
+ 341   2                   LED_Stay(cLED_WR_SYNCH);
+ 342   2                   pin_HSI=1;
+ 343   2                   pin_HSO=1;
+ 344   2                   pin_D0=1;
+ 345   2                   pin_D1=1;
+ 346   2                   pin_D2=1;
+ 347   2                   pin_D3=1;
+ 348   2                   sSYNCH_SndStep=0;
+ 349   2                   break;
+ 350   2      
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 11  
+
+ 351   2          default: sSYNCH_SndStep=0; break;
+ 352   2        }
+ 353   1      }
+ 354          
+ 355          
+ 356          void SYNCH_NextRecByte()
+ 357          {
+ 358   1        SYNCH_RecBufIx_w++;
+ 359   1        SYNCH_BytesInRecBuf++;
+ 360   1        SYNCH_RIBUF=1;
+ 361   1      }
+ 362          
+ 363          
+ 364          bit SYNCH_SaveNibble(bit H_L)
+ 365          { bit State;
+ 366   1        uchar Ch;
+ 367   1      
+ 368   1        State=0;
+ 369   1        // Pokud je pocet byte v bufferu mensi nez jeho velikost
+ 370   1        if(SYNCH_BytesInRecBuf < cRecBufSize)
+ 371   1        {
+ 372   2          SYNCH_RecBufIx_w %= cRecBufSize; // Rotuj index prijimaciho buffer pro zapis
+ 373   2      
+ 374   2          if(H_L) // Pokud je nibble horni
+ 375   2          { Ch=SYNCH_RecBuf[SYNCH_RecBufIx_w];    // Zkopiruj byte z bufferu
+ 376   3            Ch &= 0x0F;                             // Maskuj - ponech dolni nible tak jak byl
+ 377   3            if(pin_D3) Ch |= (1 << 7);              // Nastav prislusne bity
+ 378   3            if(pin_D2) Ch |= (1 << 6);
+ 379   3            if(pin_D1) Ch |= (1 << 5);
+ 380   3            if(pin_D0) Ch |= (1 << 4);
+ 381   3            SYNCH_RecBuf[SYNCH_RecBufIx_w] = Ch;  // Zapis byte zpet do bufferu
+ 382   3          }
+ 383   2          else // Pokud je nibble dolni
+ 384   2          { Ch=SYNCH_RecBuf[SYNCH_RecBufIx_w];    // Zkopiruj byte z bufferu
+ 385   3            Ch &= 0xF0;                             // Maskuj - ponech horni nible tak jak byl
+ 386   3            if(pin_D3) Ch |= (1 << 3);              // Nastav prislusne bity
+ 387   3            if(pin_D2) Ch |= (1 << 2);
+ 388   3            if(pin_D1) Ch |= (1 << 1);
+ 389   3            if(pin_D0) Ch |= (1 << 0);
+ 390   3            SYNCH_RecBuf[SYNCH_RecBufIx_w] = Ch;  // Zapis byte zpet do bufferu
+ 391   3          }
+ 392   2          State=1;
+ 393   2        }
+ 394   1      
+ 395   1        SYNCH_RIBUF=1;
+ 396   1        return(State);
+ 397   1      }
+ 398          
+ 399          
+ 400          void SYNCH_GetByte()
+ 401          {
+ 402   1        #define cRS_ResetComm  50       // Stav - Reset komunikace - nastaveni vstupu na "1"
+ 403   1        #define cCommTimeout  200       // Komunikacni
+ 404   1      
+ 405   1        switch(sSYNCH_RecStep)
+ 406   1        {
+ 407   2          // ------------ High nibble ---------------
+ 408   2          case  1: // Nastav vstupy
+ 409   2                   LED_Stay(cLED_RD_SYNCH);
+ 410   2                   pin_HSI=1;
+ 411   2                   pin_HSO=1;
+ 412   2                   pin_D0=1;
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 12  
+
+ 413   2                   pin_D1=1;
+ 414   2                   pin_D2=1;
+ 415   2                   pin_D3=1;
+ 416   2                   Timeout_Set(cSYNCH, cCommTimeout);
+ 417   2                   sSYNCH_RecStep++;
+ 418   2                   break;
+ 419   2      
+ 420   2          case  2: // Cekej na HSI->0
+ 421   2                   if((~pin_HSI) && (pin_HSO))
+ 422   2                   {
+ 423   3                     LED_Stay(cLED_RD_SYNCH);
+ 424   3      
+ 425   3                     SYNCH_Rec_HL=pin_D0;   // Uloz H/L nibble
+ 426   3                     pin_HSO=0;              // Shod HSO->0 handshake
+ 427   3      
+ 428   3                     Timeout_Set(cSYNCH, cCommTimeout);
+ 429   3                     sSYNCH_RecStep++;
+ 430   3                   }
+ 431   2      
+ 432   2                   if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+ 433   2                   break;
+ 434   2      
+ 435   2          case  3: // Cekej na nahozeni HSI handshake
+ 436   2                   if(pin_HSI)
+ 437   2                   {
+ 438   3                     LED_Stay(cLED_RD_SYNCH);
+ 439   3      
+ 440   3                     SYNCH_SaveNibble(SYNCH_Rec_HL);  // Nacti data nibble
+ 441   3                     pin_HSO=1;                         // Nastav HSO->1 handshake
+ 442   3                     Timeout_Set(cSYNCH, cCommTimeout);
+ 443   3                     sSYNCH_RecStep++;
+ 444   3                   }
+ 445   2      
+ 446   2                   if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+ 447   2                   break;
+ 448   2      
+ 449   2          // ------------ Low nibble ---------------
+ 450   2          case  4: // Cekej na shozeni HSI->0
+ 451   2                   if((~pin_HSI) && (pin_HSO))
+ 452   2                   {
+ 453   3                     LED_Stay(cLED_RD_SYNCH);
+ 454   3                     SYNCH_Rec_HL=pin_D0;     // Uloz H/L nibble
+ 455   3                     pin_HSO=0;                // Shod HSO->0 handshake
+ 456   3      
+ 457   3                     Timeout_Set(cSYNCH, cCommTimeout);
+ 458   3                     sSYNCH_RecStep++;
+ 459   3                   }
+ 460   2      
+ 461   2                   if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+ 462   2                   break;
+ 463   2      
+ 464   2          case  5: // Cekej na nahozeni HSI handshake
+ 465   2                   if(pin_HSI)
+ 466   2                   {
+ 467   3                     LED_Stay(cLED_RD_SYNCH);
+ 468   3      
+ 469   3                     SYNCH_SaveNibble(SYNCH_Rec_HL);  // Nacti data nibble
+ 470   3                     SYNCH_NextRecByte();              // Posun index
+ 471   3                     pin_HSO=1;                         // Nastav HSO->1 handshake
+ 472   3      
+ 473   3                     sSYNCH_RecStep=0;
+ 474   3                   }
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 13  
+
+ 475   2      
+ 476   2                   if(Timeout(cSYNCH)) sSYNCH_RecStep=cRS_ResetComm;
+ 477   2                   break;
+ 478   2      
+ 479   2          case cRS_ResetComm:
+ 480   2                   LED_Stay(cLED_WR_SYNCH);
+ 481   2                   pin_HSI=1;
+ 482   2                   pin_HSO=1;
+ 483   2                   pin_D0=1;
+ 484   2                   pin_D1=1;
+ 485   2                   pin_D2=1;
+ 486   2                   pin_D3=1;
+ 487   2                   sSYNCH_RecStep=0;
+ 488   2                   break;
+ 489   2      
+ 490   2          default: sSYNCH_RecStep=0; break;
+ 491   2        }
+ 492   1      }
+ 493          
+ 494          
+ 495          uchar SYNCH_GetChar()
+ 496          {
+ 497   1        uchar Ch;
+ 498   1      
+ 499   1        Ch=0;
+ 500   1        if(SYNCH_BytesInRecBuf)                    // Pokud je neco v prijimacim bufferu
+ 501   1        {
+ 502   2          SYNCH_RecBufIx_r %= cRecBufSize;         // Rotuj index prijimaciho bufferu
+ 503   2          Ch = SYNCH_RecBuf[SYNCH_RecBufIx_r];    // Nacti znak z recbuf
+ 504   2          SYNCH_RecBufIx_r++;                      // Posun index na dalsi znak
+ 505   2          SYNCH_BytesInRecBuf--;                   // Dec poctu znaku v bufferu
+ 506   2        }
+ 507   1        return(Ch);
+ 508   1      }
+ 509          
+ 510          
+ 511          void SYNCH_Init()
+ 512          {
+ 513   1        uchar i;
+ 514   1      
+ 515   1        SYNCH_SrcPtrIx_w=0;
+ 516   1        SYNCH_SrcPtrIx_r=0;
+ 517   1        SYNCH_PtrInBuf=0;
+ 518   1        SYNCH_SrcIndex=0;
+ 519   1        SYNCH_BytesInSndBuf=0;
+ 520   1      
+ 521   1        SYNCH_RecBufIx_w=0;
+ 522   1        SYNCH_RecBufIx_r=0;
+ 523   1        SYNCH_BytesInRecBuf=0;
+ 524   1        SYNCH_Rec_HL=0;
+ 525   1        SYNCH_RIBUF=0;
+ 526   1      
+ 527   1        SYNCH_LogBufIx_w=0;
+ 528   1        SYNCH_LogBufIx_r=0;
+ 529   1        SYNCH_ByteInLogBuf=0;
+ 530   1        bSYNCH_LogBufOverflow=0;
+ 531   1      
+ 532   1        for(i=0; i<sizeof(SYNCH_RecBuf); i++) SYNCH_RecBuf[i]=0;
+ 533   1        for(i=0; i<sizeof(SYNCH_SrcBytes); i++) SYNCH_SrcBytes[i]=0;
+ 534   1      
+ 535   1        pin_HSI = 1;
+ 536   1        pin_HSO = 1;
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 14  
+
+ 537   1        pin_D0  = 1;
+ 538   1        pin_D1  = 1;
+ 539   1        pin_D2  = 1;
+ 540   1        pin_D3  = 1;
+ 541   1      
+ 542   1        sSYNCH_RecStep=0;
+ 543   1        sSYNCH_SndStep=0;
+ 544   1      }
+ 545          
+ 546          
+ 547          void SYNCH_Proc()
+ 548          {
+ 549   1        // Nakopni vysilani pokud se neco zjevilo v Ptr nebo Log bufru a proces neni akcni
+ 550   1        if(((SYNCH_PtrInBuf) || (SYNCH_ByteInLogBuf)) &&
+ 551   1           (!sSYNCH_SndStep)) sSYNCH_SndStep=1;
+ 552   1      
+ 553   1        // Nakopni prijem pokud neni vysilani a neco se dobyva z venku a proces neni akcni
+ 554   1        if(!sSYNCH_SndStep)
+ 555   1        {
+ 556   2          if(((~pin_HSI) && (pin_HSO)) && (!sSYNCH_RecStep)) sSYNCH_RecStep=1;
+ 557   2        }
+ 558   1      
+ 559   1        // Volej proces, pokud je aktivni
+ 560   1        if(sSYNCH_SndStep) SYNCH_SendByte();
+ 561   1        else
+ 562   1        {
+ 563   2          if(sSYNCH_RecStep) SYNCH_GetByte();
+ 564   2        }
+ 565   1      }
+ 566          
+ 567          
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 15  
+
+ASSEMBLY LISTING OF GENERATED OBJECT CODE
+
+
+             ; FUNCTION _SYNCH_SendMsg (BEGIN)
+;---- Variable 'pSrcBuf' assigned to Register 'R1/R2/R3' ----
+;---- Variable 'SrcBytes' assigned to Register 'R5' ----
+                                           ; SOURCE LINE # 56
+                                           ; SOURCE LINE # 57
+                                           ; SOURCE LINE # 59
+0000 C200        R     CLR     State
+                                           ; SOURCE LINE # 60
+0002 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+0005 E0                MOVX    A,@DPTR
+0006 C3                CLR     C
+0007 9405              SUBB    A,#05H
+0009 503B              JNC     ?C0001
+                                           ; SOURCE LINE # 61
+000B 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_w
+000E E0                MOVX    A,@DPTR
+000F 75F005            MOV     B,#05H
+0012 84                DIV     AB
+0013 AFF0              MOV     R7,B
+0015 EF                MOV     A,R7
+0016 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 62
+0017 75F003            MOV     B,#03H
+001A A4                MUL     AB
+001B 2400        R     ADD     A,#LOW SYNCH_ptr_Src
+001D F582              MOV     DPL,A
+001F E4                CLR     A
+0020 3400        R     ADDC    A,#HIGH SYNCH_ptr_Src
+0022 F583              MOV     DPH,A
+0024 EB                MOV     A,R3
+0025 F0                MOVX    @DPTR,A
+0026 A3                INC     DPTR
+0027 EA                MOV     A,R2
+0028 F0                MOVX    @DPTR,A
+0029 A3                INC     DPTR
+002A E9                MOV     A,R1
+002B F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 63
+002C 7400        R     MOV     A,#LOW SYNCH_SrcBytes
+002E 2F                ADD     A,R7
+002F F582              MOV     DPL,A
+0031 E4                CLR     A
+0032 3400        R     ADDC    A,#HIGH SYNCH_SrcBytes
+0034 F583              MOV     DPH,A
+0036 ED                MOV     A,R5
+0037 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 65
+0038 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+003B E0                MOVX    A,@DPTR
+003C 04                INC     A
+003D F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 66
+003E 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_w
+0041 E0                MOVX    A,@DPTR
+0042 04                INC     A
+0043 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 67
+0044 D200        R     SETB    State
+                                           ; SOURCE LINE # 68
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 16  
+
+0046         ?C0001:
+                                           ; SOURCE LINE # 69
+0046 A200        R     MOV     C,State
+0048 E4                CLR     A
+0049 33                RLC     A
+004A FF                MOV     R7,A
+                                           ; SOURCE LINE # 70
+004B         ?C0002:
+004B 22                RET     
+             ; FUNCTION _SYNCH_SendMsg (END)
+
+             ; FUNCTION _SYNCH_LogWriteChar (BEGIN)
+;---- Variable 'Ch' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 74
+                                           ; SOURCE LINE # 75
+0000 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0003 E0                MOVX    A,@DPTR
+0004 C3                CLR     C
+0005 94A0              SUBB    A,#0A0H
+0007 5025              JNC     ?C0003
+                                           ; SOURCE LINE # 76
+0009 900000      R     MOV     DPTR,#SYNCH_LogBufIx_w
+000C E0                MOVX    A,@DPTR
+000D 75F0A0            MOV     B,#0A0H
+0010 84                DIV     AB
+0011 E5F0              MOV     A,B
+0013 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 77
+0014 E0                MOVX    A,@DPTR
+0015 2400        R     ADD     A,#LOW SYNCH_LogBuf
+0017 F582              MOV     DPL,A
+0019 E4                CLR     A
+001A 3400        R     ADDC    A,#HIGH SYNCH_LogBuf
+001C F583              MOV     DPH,A
+001E EF                MOV     A,R7
+001F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 78
+0020 900000      R     MOV     DPTR,#SYNCH_LogBufIx_w
+0023 E0                MOVX    A,@DPTR
+0024 04                INC     A
+0025 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 79
+0026 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0029 E0                MOVX    A,@DPTR
+002A 04                INC     A
+002B F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 80
+002C D3                SETB    C
+002D 22                RET     
+                                           ; SOURCE LINE # 81
+002E         ?C0003:
+                                           ; SOURCE LINE # 83
+002E D200        R     SETB    bSYNCH_LogBufOverflow
+                                           ; SOURCE LINE # 84
+0030 C3                CLR     C
+                                           ; SOURCE LINE # 85
+                                           ; SOURCE LINE # 86
+0031         ?C0004:
+0031 22                RET     
+             ; FUNCTION _SYNCH_LogWriteChar (END)
+
+             ; FUNCTION _SYNCH_LogWriteString (BEGIN)
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 17  
+
+0000 8B00        R     MOV     Text,R3
+0002 8A00        R     MOV     Text+01H,R2
+0004 8900        R     MOV     Text+02H,R1
+;---- Variable 'MaxSize' assigned to Register 'R5' ----
+                                           ; SOURCE LINE # 90
+                                           ; SOURCE LINE # 91
+                                           ; SOURCE LINE # 93
+;---- Variable 'i' assigned to Register 'R6' ----
+0006 E4                CLR     A
+0007 FE                MOV     R6,A
+0008         ?C0006:
+0008 AB00        R     MOV     R3,Text
+000A AA00        R     MOV     R2,Text+01H
+000C A900        R     MOV     R1,Text+02H
+000E 8E82              MOV     DPL,R6
+0010 758300            MOV     DPH,#00H
+0013 120000      E     LCALL   ?C?CLDOPTR
+0016 FF                MOV     R7,A
+0017 600E              JZ      ?C0010
+0019 EE                MOV     A,R6
+001A C3                CLR     C
+001B 9D                SUBB    A,R5
+001C 5009              JNC     ?C0010
+                                           ; SOURCE LINE # 94
+                                           ; SOURCE LINE # 95
+001E 120000      R     LCALL   _SYNCH_LogWriteChar
+0021 B3                CPL     C
+0022 4003              JC      ?C0010
+                                           ; SOURCE LINE # 96
+0024         ?C0008:
+0024 0E                INC     R6
+0025 80E1              SJMP    ?C0006
+                                           ; SOURCE LINE # 97
+0027         ?C0010:
+0027 22                RET     
+             ; FUNCTION _SYNCH_LogWriteString (END)
+
+             ; FUNCTION SYNCH_LogGetChar (BEGIN)
+                                           ; SOURCE LINE # 101
+                                           ; SOURCE LINE # 102
+                                           ; SOURCE LINE # 104
+;---- Variable 'Out' assigned to Register 'R7' ----
+0000 E4                CLR     A
+0001 FF                MOV     R7,A
+                                           ; SOURCE LINE # 105
+0002 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0005 E0                MOVX    A,@DPTR
+0006 6017              JZ      ?C0011
+                                           ; SOURCE LINE # 106
+0008 900000      R     MOV     DPTR,#SYNCH_LogBufIx_r
+000B E0                MOVX    A,@DPTR
+000C 75F0A0            MOV     B,#0A0H
+000F 84                DIV     AB
+0010 E5F0              MOV     A,B
+0012 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 107
+0013 E0                MOVX    A,@DPTR
+0014 2400        R     ADD     A,#LOW SYNCH_LogBuf
+0016 F582              MOV     DPL,A
+0018 E4                CLR     A
+0019 3400        R     ADDC    A,#HIGH SYNCH_LogBuf
+001B F583              MOV     DPH,A
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 18  
+
+001D E0                MOVX    A,@DPTR
+001E FF                MOV     R7,A
+                                           ; SOURCE LINE # 108
+001F         ?C0011:
+                                           ; SOURCE LINE # 109
+                                           ; SOURCE LINE # 110
+001F         ?C0012:
+001F 22                RET     
+             ; FUNCTION SYNCH_LogGetChar (END)
+
+             ; FUNCTION SYNCH_LogNextChar (BEGIN)
+                                           ; SOURCE LINE # 113
+                                           ; SOURCE LINE # 114
+                                           ; SOURCE LINE # 115
+0000 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0003 E0                MOVX    A,@DPTR
+0004 6014              JZ      ?C0014
+                                           ; SOURCE LINE # 116
+0006 900000      R     MOV     DPTR,#SYNCH_LogBufIx_r
+0009 E0                MOVX    A,@DPTR
+000A 75F0A0            MOV     B,#0A0H
+000D 84                DIV     AB
+000E E5F0              MOV     A,B
+0010 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 117
+0011 E0                MOVX    A,@DPTR
+0012 04                INC     A
+0013 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 118
+0014 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0017 E0                MOVX    A,@DPTR
+0018 14                DEC     A
+0019 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 119
+                                           ; SOURCE LINE # 120
+001A         ?C0014:
+001A 22                RET     
+             ; FUNCTION SYNCH_LogNextChar (END)
+
+             ; FUNCTION SYNCH_NextSrcByte (BEGIN)
+                                           ; SOURCE LINE # 123
+                                           ; SOURCE LINE # 124
+                                           ; SOURCE LINE # 125
+0000 900000      R     MOV     DPTR,#SYNCH_SrcIndex
+0003 E0                MOVX    A,@DPTR
+0004 04                INC     A
+0005 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 126
+0006 020000      R     LJMP    SYNCH_GetSrcByte
+             ; FUNCTION SYNCH_NextSrcByte (END)
+
+             ; FUNCTION SYNCH_GetSrcByte (BEGIN)
+                                           ; SOURCE LINE # 130
+                                           ; SOURCE LINE # 131
+                                           ; SOURCE LINE # 134
+0000 D200        R     SETB    Repeat
+                                           ; SOURCE LINE # 135
+;---- Variable 'OutChar' assigned to Register 'R7' ----
+0002 E4                CLR     A
+0003 FF                MOV     R7,A
+0004         ?C0016:
+                                           ; SOURCE LINE # 137
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 19  
+
+0004 200003      R     JB      Repeat,$ + 6H
+0007 020000      R     LJMP    ?C0017
+                                           ; SOURCE LINE # 138
+000A 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_r
+000D E0                MOVX    A,@DPTR
+000E 75F005            MOV     B,#05H
+0011 84                DIV     AB
+0012 E5F0              MOV     A,B
+0014 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 141
+0015 E0                MOVX    A,@DPTR
+0016 FE                MOV     R6,A
+0017 2400        R     ADD     A,#LOW SYNCH_SrcBytes
+0019 F582              MOV     DPL,A
+001B E4                CLR     A
+001C 3400        R     ADDC    A,#HIGH SYNCH_SrcBytes
+001E F583              MOV     DPH,A
+0020 E0                MOVX    A,@DPTR
+0021 FD                MOV     R5,A
+0022 6053              JZ      ?C0018
+                                           ; SOURCE LINE # 142
+                                           ; SOURCE LINE # 144
+0024 900000      R     MOV     DPTR,#SYNCH_SrcIndex
+0027 E0                MOVX    A,@DPTR
+0028 FC                MOV     R4,A
+0029 C3                CLR     C
+002A ED                MOV     A,R5
+002B 9C                SUBB    A,R4
+002C 900000      R     MOV     DPTR,#SYNCH_BytesInSndBuf
+002F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 147
+0030 6023              JZ      ?C0019
+                                           ; SOURCE LINE # 148
+                                           ; SOURCE LINE # 150
+0032 EE                MOV     A,R6
+0033 75F003            MOV     B,#03H
+0036 A4                MUL     AB
+0037 2400        R     ADD     A,#LOW SYNCH_ptr_Src
+0039 F582              MOV     DPL,A
+003B E4                CLR     A
+003C 3400        R     ADDC    A,#HIGH SYNCH_ptr_Src
+003E F583              MOV     DPH,A
+0040 E0                MOVX    A,@DPTR
+0041 FB                MOV     R3,A
+0042 A3                INC     DPTR
+0043 E0                MOVX    A,@DPTR
+0044 FA                MOV     R2,A
+0045 A3                INC     DPTR
+0046 E0                MOVX    A,@DPTR
+0047 F9                MOV     R1,A
+0048 8C82              MOV     DPL,R4
+004A 758300            MOV     DPH,#00H
+004D 120000      E     LCALL   ?C?CLDOPTR
+0050 FF                MOV     R7,A
+                                           ; SOURCE LINE # 151
+0051 C200        R     CLR     Repeat
+                                           ; SOURCE LINE # 152
+0053 80AF              SJMP    ?C0016
+0055         ?C0019:
+                                           ; SOURCE LINE # 154
+                                           ; SOURCE LINE # 155
+0055 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 20  
+
+0058 E0                MOVX    A,@DPTR
+0059 600E              JZ      ?C0021
+                                           ; SOURCE LINE # 156
+005B 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_r
+005E E0                MOVX    A,@DPTR
+005F 04                INC     A
+0060 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 157
+0061 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+0064 E0                MOVX    A,@DPTR
+0065 14                DEC     A
+0066 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 158
+0067 8007              SJMP    ?C0022
+0069         ?C0021:
+                                           ; SOURCE LINE # 160
+                                           ; SOURCE LINE # 161
+0069 C200        R     CLR     Repeat
+                                           ; SOURCE LINE # 162
+006B E4                CLR     A
+006C 900000      R     MOV     DPTR,#SYNCH_BytesInSndBuf
+006F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 163
+0070         ?C0022:
+                                           ; SOURCE LINE # 165
+0070 E4                CLR     A
+0071 900000      R     MOV     DPTR,#SYNCH_SrcIndex
+0074 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 166
+                                           ; SOURCE LINE # 167
+0075 808D              SJMP    ?C0016
+0077         ?C0018:
+                                           ; SOURCE LINE # 169
+                                           ; SOURCE LINE # 170
+0077 C200        R     CLR     Repeat
+                                           ; SOURCE LINE # 171
+0079 E4                CLR     A
+007A 900000      R     MOV     DPTR,#SYNCH_BytesInSndBuf
+007D F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 172
+007E 900000      R     MOV     DPTR,#SYNCH_SrcIndex
+0081 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 174
+0082 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+0085 E0                MOVX    A,@DPTR
+0086 7003              JNZ     $ + 5H
+0088 020000      R     LJMP    ?C0016
+                                           ; SOURCE LINE # 175
+                                           ; SOURCE LINE # 176
+008B 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_r
+008E E0                MOVX    A,@DPTR
+008F 04                INC     A
+0090 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 177
+0091 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+0094 E0                MOVX    A,@DPTR
+0095 14                DEC     A
+0096 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 178
+                                           ; SOURCE LINE # 179
+                                           ; SOURCE LINE # 180
+0097 020000      R     LJMP    ?C0016
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 21  
+
+009A         ?C0017:
+                                           ; SOURCE LINE # 181
+                                           ; SOURCE LINE # 182
+009A         ?C0025:
+009A 22                RET     
+             ; FUNCTION SYNCH_GetSrcByte (END)
+
+             ; FUNCTION SYNCH_SendByte (BEGIN)
+                                           ; SOURCE LINE # 185
+                                           ; SOURCE LINE # 186
+0000 E4                CLR     A
+0001 F500        R     MOV     OutChar,A
+                                           ; SOURCE LINE # 191
+0003 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0006 E0                MOVX    A,@DPTR
+0007 24CE              ADD     A,#0CEH
+0009 7003              JNZ     $ + 5H
+000B 020000      R     LJMP    ?C0051
+000E 2431              ADD     A,#031H
+0010 B40700            CJNE    A,#07H,?C0101
+0013         ?C0101:
+0013 4003              JC      $ + 5H
+0015 020000      R     LJMP    ?C0052
+0018 900000      R     MOV     DPTR,#?C0102
+001B F8                MOV     R0,A
+001C 28                ADD     A,R0
+001D 28                ADD     A,R0
+001E 73                JMP     @A+DPTR
+001F         ?C0102:
+001F 020000      R     LJMP    ?C0027
+0022 020000      R     LJMP    ?C0028
+0025 020000      R     LJMP    ?C0032
+0028 020000      R     LJMP    ?C0035
+002B 020000      R     LJMP    ?C0040
+002E 020000      R     LJMP    ?C0043
+0031 020000      R     LJMP    ?C0048
+                                           ; SOURCE LINE # 192
+                                           ; SOURCE LINE # 193
+0034         ?C0027:
+                                           ; SOURCE LINE # 194
+0034 7F07              MOV     R7,#07H
+0036 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 201
+0039 7DC8              MOV     R5,#0C8H
+003B 7C00              MOV     R4,#00H
+003D 7F09              MOV     R7,#09H
+003F 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 202
+0042 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0045 E0                MOVX    A,@DPTR
+0046 04                INC     A
+0047 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 203
+0048 22                RET     
+                                           ; SOURCE LINE # 206
+0049         ?C0028:
+                                           ; SOURCE LINE # 209
+0049 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+004C E0                MOVX    A,@DPTR
+004D 7004              JNZ     ?C0030
+004F A3                INC     DPTR
+0050 E0                MOVX    A,@DPTR
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 22  
+
+0051 6018              JZ      ?C0029
+0053         ?C0030:
+                                           ; SOURCE LINE # 210
+0053 7F07              MOV     R7,#07H
+0055 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 212
+0058 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 213
+005A D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 215
+005C 7DC8              MOV     R5,#0C8H
+005E 7C00              MOV     R4,#00H
+0060 7F09              MOV     R7,#09H
+0062 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 216
+0065 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0068 E0                MOVX    A,@DPTR
+0069 04                INC     A
+006A F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 217
+006B         ?C0029:
+                                           ; SOURCE LINE # 219
+006B 7F09              MOV     R7,#09H
+006D 120000      E     LCALL   _Timeout
+0070 4003              JC      $ + 5H
+0072 020000      R     LJMP    ?C0053
+0075 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0078 7432              MOV     A,#032H
+007A F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 220
+007B 22                RET     
+                                           ; SOURCE LINE # 222
+007C         ?C0032:
+                                           ; SOURCE LINE # 226
+007C 30A123            JNB     pin_HSO,?C0033
+007F 30A020            JNB     pin_HSI,?C0033
+                                           ; SOURCE LINE # 227
+                                           ; SOURCE LINE # 228
+0082 7F07              MOV     R7,#07H
+0084 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 230
+0087 D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 231
+0089 C2A3              CLR     pin_D1
+                                           ; SOURCE LINE # 232
+008B C2A4              CLR     pin_D2
+                                           ; SOURCE LINE # 233
+008D C2A5              CLR     pin_D3
+                                           ; SOURCE LINE # 234
+008F D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 235
+0091 C2A1              CLR     pin_HSO
+                                           ; SOURCE LINE # 236
+0093 7DC8              MOV     R5,#0C8H
+0095 7C00              MOV     R4,#00H
+0097 7F09              MOV     R7,#09H
+0099 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 237
+009C 900000      R     MOV     DPTR,#sSYNCH_SndStep
+009F E0                MOVX    A,@DPTR
+00A0 04                INC     A
+00A1 F0                MOVX    @DPTR,A
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 23  
+
+                                           ; SOURCE LINE # 238
+00A2         ?C0033:
+                                           ; SOURCE LINE # 240
+00A2 7F09              MOV     R7,#09H
+00A4 120000      E     LCALL   _Timeout
+00A7 4003              JC      $ + 5H
+00A9 020000      R     LJMP    ?C0053
+00AC 900000      R     MOV     DPTR,#sSYNCH_SndStep
+00AF 7432              MOV     A,#032H
+00B1 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 241
+00B2 22                RET     
+                                           ; SOURCE LINE # 243
+00B3         ?C0035:
+                                           ; SOURCE LINE # 245
+00B3 A2A0              MOV     C,pin_HSI
+00B5 B3                CPL     C
+00B6 5039              JNC     ?C0036
+                                           ; SOURCE LINE # 246
+                                           ; SOURCE LINE # 247
+00B8 7F07              MOV     R7,#07H
+00BA 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 250
+00BD 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+00C0 E0                MOVX    A,@DPTR
+00C1 6007              JZ      ?C0037
+                                           ; SOURCE LINE # 251
+                                           ; SOURCE LINE # 252
+00C3 120000      R     LCALL   SYNCH_LogGetChar
+00C6 8F00        R     MOV     OutChar,R7
+                                           ; SOURCE LINE # 253
+00C8 8005              SJMP    ?C0038
+00CA         ?C0037:
+                                           ; SOURCE LINE # 255
+                                           ; SOURCE LINE # 256
+00CA 120000      R     LCALL   SYNCH_GetSrcByte
+00CD 8F00        R     MOV     OutChar,R7
+                                           ; SOURCE LINE # 257
+00CF         ?C0038:
+                                           ; SOURCE LINE # 258
+00CF E500        R     MOV     A,OutChar
+00D1 A2E4              MOV     C,ACC.4
+00D3 92A2              MOV     pin_D0,C
+                                           ; SOURCE LINE # 259
+00D5 A2E5              MOV     C,ACC.5
+00D7 92A3              MOV     pin_D1,C
+                                           ; SOURCE LINE # 260
+00D9 A2E6              MOV     C,ACC.6
+00DB 92A4              MOV     pin_D2,C
+                                           ; SOURCE LINE # 261
+00DD 33                RLC     A
+00DE 92A5              MOV     pin_D3,C
+                                           ; SOURCE LINE # 262
+00E0 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 264
+00E2 7DC8              MOV     R5,#0C8H
+00E4 7C00              MOV     R4,#00H
+00E6 7F09              MOV     R7,#09H
+00E8 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 265
+00EB 900000      R     MOV     DPTR,#sSYNCH_SndStep
+00EE E0                MOVX    A,@DPTR
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 24  
+
+00EF 04                INC     A
+00F0 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 266
+00F1         ?C0036:
+                                           ; SOURCE LINE # 268
+00F1 7F09              MOV     R7,#09H
+00F3 120000      E     LCALL   _Timeout
+00F6 4003              JC      $ + 5H
+00F8 020000      R     LJMP    ?C0053
+00FB 900000      R     MOV     DPTR,#sSYNCH_SndStep
+00FE 7432              MOV     A,#032H
+0100 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 269
+0101 22                RET     
+                                           ; SOURCE LINE # 272
+0102         ?C0040:
+                                           ; SOURCE LINE # 276
+0102 30A123            JNB     pin_HSO,?C0041
+0105 30A020            JNB     pin_HSI,?C0041
+                                           ; SOURCE LINE # 277
+0108 7F07              MOV     R7,#07H
+010A 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 279
+010D C2A2              CLR     pin_D0
+                                           ; SOURCE LINE # 280
+010F C2A3              CLR     pin_D1
+                                           ; SOURCE LINE # 281
+0111 C2A4              CLR     pin_D2
+                                           ; SOURCE LINE # 282
+0113 C2A5              CLR     pin_D3
+                                           ; SOURCE LINE # 283
+0115 D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 284
+0117 C2A1              CLR     pin_HSO
+                                           ; SOURCE LINE # 285
+0119 7DC8              MOV     R5,#0C8H
+011B 7C00              MOV     R4,#00H
+011D 7F09              MOV     R7,#09H
+011F 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 286
+0122 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0125 E0                MOVX    A,@DPTR
+0126 04                INC     A
+0127 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 287
+0128         ?C0041:
+                                           ; SOURCE LINE # 289
+0128 7F09              MOV     R7,#09H
+012A 120000      E     LCALL   _Timeout
+012D 4003              JC      $ + 5H
+012F 020000      R     LJMP    ?C0053
+0132 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0135 7432              MOV     A,#032H
+0137 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 290
+0138 22                RET     
+                                           ; SOURCE LINE # 292
+0139         ?C0043:
+                                           ; SOURCE LINE # 294
+0139 A2A0              MOV     C,pin_HSI
+013B B3                CPL     C
+013C 5041              JNC     ?C0044
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 25  
+
+                                           ; SOURCE LINE # 295
+                                           ; SOURCE LINE # 296
+013E 7F07              MOV     R7,#07H
+0140 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 299
+0143 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0146 E0                MOVX    A,@DPTR
+0147 600A              JZ      ?C0045
+                                           ; SOURCE LINE # 300
+                                           ; SOURCE LINE # 301
+0149 120000      R     LCALL   SYNCH_LogGetChar
+014C 8F00        R     MOV     OutChar,R7
+                                           ; SOURCE LINE # 302
+014E 120000      R     LCALL   SYNCH_LogNextChar
+                                           ; SOURCE LINE # 303
+0151 8008              SJMP    ?C0046
+0153         ?C0045:
+                                           ; SOURCE LINE # 305
+                                           ; SOURCE LINE # 306
+0153 120000      R     LCALL   SYNCH_GetSrcByte
+0156 8F00        R     MOV     OutChar,R7
+                                           ; SOURCE LINE # 307
+0158 120000      R     LCALL   SYNCH_NextSrcByte
+                                           ; SOURCE LINE # 308
+015B         ?C0046:
+                                           ; SOURCE LINE # 309
+015B E500        R     MOV     A,OutChar
+015D 13                RRC     A
+015E 92A2              MOV     pin_D0,C
+                                           ; SOURCE LINE # 310
+0160 E500        R     MOV     A,OutChar
+0162 A2E1              MOV     C,ACC.1
+0164 92A3              MOV     pin_D1,C
+                                           ; SOURCE LINE # 311
+0166 A2E2              MOV     C,ACC.2
+0168 92A4              MOV     pin_D2,C
+                                           ; SOURCE LINE # 312
+016A A2E3              MOV     C,ACC.3
+016C 92A5              MOV     pin_D3,C
+                                           ; SOURCE LINE # 313
+016E D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 315
+0170 7DC8              MOV     R5,#0C8H
+0172 7C00              MOV     R4,#00H
+0174 7F09              MOV     R7,#09H
+0176 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 316
+0179 900000      R     MOV     DPTR,#sSYNCH_SndStep
+017C E0                MOVX    A,@DPTR
+017D 04                INC     A
+017E F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 317
+017F         ?C0044:
+                                           ; SOURCE LINE # 319
+017F 7F09              MOV     R7,#09H
+0181 120000      E     LCALL   _Timeout
+0184 5045              JNC     ?C0053
+0186 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0189 7432              MOV     A,#032H
+018B F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 320
+018C 22                RET     
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 26  
+
+                                           ; SOURCE LINE # 322
+018D         ?C0048:
+                                           ; SOURCE LINE # 324
+018D 30A011            JNB     pin_HSI,?C0049
+                                           ; SOURCE LINE # 325
+                                           ; SOURCE LINE # 327
+0190 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 328
+0192 D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 329
+0194 D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 330
+0196 D2A3              SETB    pin_D1
+                                           ; SOURCE LINE # 331
+0198 D2A4              SETB    pin_D2
+                                           ; SOURCE LINE # 332
+019A D2A5              SETB    pin_D3
+                                           ; SOURCE LINE # 334
+019C E4                CLR     A
+019D 900000      R     MOV     DPTR,#sSYNCH_SndStep
+01A0 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 335
+01A1         ?C0049:
+                                           ; SOURCE LINE # 337
+01A1 7F09              MOV     R7,#09H
+01A3 120000      E     LCALL   _Timeout
+01A6 5023              JNC     ?C0053
+01A8 900000      R     MOV     DPTR,#sSYNCH_SndStep
+01AB 7432              MOV     A,#032H
+01AD F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 338
+01AE 22                RET     
+                                           ; SOURCE LINE # 340
+01AF         ?C0051:
+                                           ; SOURCE LINE # 341
+01AF 7F07              MOV     R7,#07H
+01B1 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 342
+01B4 D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 343
+01B6 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 344
+01B8 D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 345
+01BA D2A3              SETB    pin_D1
+                                           ; SOURCE LINE # 346
+01BC D2A4              SETB    pin_D2
+                                           ; SOURCE LINE # 347
+01BE D2A5              SETB    pin_D3
+                                           ; SOURCE LINE # 348
+01C0 E4                CLR     A
+01C1 900000      R     MOV     DPTR,#sSYNCH_SndStep
+01C4 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 349
+01C5 22                RET     
+                                           ; SOURCE LINE # 351
+01C6         ?C0052:
+01C6 E4                CLR     A
+01C7 900000      R     MOV     DPTR,#sSYNCH_SndStep
+01CA F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 352
+                                           ; SOURCE LINE # 353
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 27  
+
+01CB         ?C0053:
+01CB 22                RET     
+             ; FUNCTION SYNCH_SendByte (END)
+
+             ; FUNCTION SYNCH_NextRecByte (BEGIN)
+                                           ; SOURCE LINE # 356
+                                           ; SOURCE LINE # 357
+                                           ; SOURCE LINE # 358
+0000 900000      R     MOV     DPTR,#SYNCH_RecBufIx_w
+0003 E0                MOVX    A,@DPTR
+0004 04                INC     A
+0005 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 359
+0006 900000      R     MOV     DPTR,#SYNCH_BytesInRecBuf
+0009 E0                MOVX    A,@DPTR
+000A 04                INC     A
+000B F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 360
+000C D200        R     SETB    SYNCH_RIBUF
+                                           ; SOURCE LINE # 361
+000E 22                RET     
+             ; FUNCTION SYNCH_NextRecByte (END)
+
+             ; FUNCTION SYNCH_SaveNibble (BEGIN)
+;---- Variable 'Ch' assigned to Register 'R7' ----
+                                           ; SOURCE LINE # 364
+                                           ; SOURCE LINE # 365
+                                           ; SOURCE LINE # 368
+0000 C200        R     CLR     State
+                                           ; SOURCE LINE # 370
+0002 900000      R     MOV     DPTR,#SYNCH_BytesInRecBuf
+0005 E0                MOVX    A,@DPTR
+0006 C3                CLR     C
+0007 940A              SUBB    A,#0AH
+0009 5067              JNC     ?C0055
+                                           ; SOURCE LINE # 371
+                                           ; SOURCE LINE # 372
+000B 900000      R     MOV     DPTR,#SYNCH_RecBufIx_w
+000E E0                MOVX    A,@DPTR
+000F 75F00A            MOV     B,#0AH
+0012 84                DIV     AB
+0013 E5F0              MOV     A,B
+0015 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 374
+0016 30002B      R     JNB     H_L,?C0056
+                                           ; SOURCE LINE # 375
+0019 E0                MOVX    A,@DPTR
+001A 2400        R     ADD     A,#LOW SYNCH_RecBuf
+001C F582              MOV     DPL,A
+001E E4                CLR     A
+001F 3400        R     ADDC    A,#HIGH SYNCH_RecBuf
+0021 F583              MOV     DPH,A
+0023 E0                MOVX    A,@DPTR
+0024 FF                MOV     R7,A
+                                           ; SOURCE LINE # 376
+0025 53070F            ANL     AR7,#0FH
+                                           ; SOURCE LINE # 377
+0028 30A503            JNB     pin_D3,?C0057
+002B 430780            ORL     AR7,#080H
+002E         ?C0057:
+                                           ; SOURCE LINE # 378
+002E 30A403            JNB     pin_D2,?C0058
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 28  
+
+0031 430740            ORL     AR7,#040H
+0034         ?C0058:
+                                           ; SOURCE LINE # 379
+0034 30A303            JNB     pin_D1,?C0059
+0037 430720            ORL     AR7,#020H
+003A         ?C0059:
+                                           ; SOURCE LINE # 380
+003A 30A203            JNB     pin_D0,?C0060
+003D 430710            ORL     AR7,#010H
+0040         ?C0060:
+                                           ; SOURCE LINE # 381
+0040 EF                MOV     A,R7
+0041 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 382
+0042 802C              SJMP    ?C0061
+0044         ?C0056:
+                                           ; SOURCE LINE # 384
+0044 900000      R     MOV     DPTR,#SYNCH_RecBufIx_w
+0047 E0                MOVX    A,@DPTR
+0048 2400        R     ADD     A,#LOW SYNCH_RecBuf
+004A F582              MOV     DPL,A
+004C E4                CLR     A
+004D 3400        R     ADDC    A,#HIGH SYNCH_RecBuf
+004F F583              MOV     DPH,A
+0051 E0                MOVX    A,@DPTR
+0052 FF                MOV     R7,A
+                                           ; SOURCE LINE # 385
+0053 5307F0            ANL     AR7,#0F0H
+                                           ; SOURCE LINE # 386
+0056 30A503            JNB     pin_D3,?C0062
+0059 430708            ORL     AR7,#08H
+005C         ?C0062:
+                                           ; SOURCE LINE # 387
+005C 30A403            JNB     pin_D2,?C0063
+005F 430704            ORL     AR7,#04H
+0062         ?C0063:
+                                           ; SOURCE LINE # 388
+0062 30A303            JNB     pin_D1,?C0064
+0065 430702            ORL     AR7,#02H
+0068         ?C0064:
+                                           ; SOURCE LINE # 389
+0068 30A203            JNB     pin_D0,?C0065
+006B 430701            ORL     AR7,#01H
+006E         ?C0065:
+                                           ; SOURCE LINE # 390
+006E EF                MOV     A,R7
+006F F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 391
+0070         ?C0061:
+                                           ; SOURCE LINE # 392
+0070 D200        R     SETB    State
+                                           ; SOURCE LINE # 393
+0072         ?C0055:
+                                           ; SOURCE LINE # 395
+0072 D200        R     SETB    SYNCH_RIBUF
+                                           ; SOURCE LINE # 396
+0074 A200        R     MOV     C,State
+                                           ; SOURCE LINE # 397
+0076         ?C0066:
+0076 22                RET     
+             ; FUNCTION SYNCH_SaveNibble (END)
+
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 29  
+
+             ; FUNCTION SYNCH_GetByte (BEGIN)
+                                           ; SOURCE LINE # 400
+                                           ; SOURCE LINE # 401
+                                           ; SOURCE LINE # 405
+0000 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0003 E0                MOVX    A,@DPTR
+0004 24FE              ADD     A,#0FEH
+0006 603E              JZ      ?C0069
+0008 14                DEC     A
+0009 606E              JZ      ?C0072
+000B 14                DEC     A
+000C 7003              JNZ     $ + 5H
+000E 020000      R     LJMP    ?C0075
+0011 14                DEC     A
+0012 7003              JNZ     $ + 5H
+0014 020000      R     LJMP    ?C0078
+0017 24D3              ADD     A,#0D3H
+0019 7003              JNZ     $ + 5H
+001B 020000      R     LJMP    ?C0081
+001E 2431              ADD     A,#031H
+0020 6003              JZ      $ + 5H
+0022 020000      R     LJMP    ?C0082
+                                           ; SOURCE LINE # 406
+                                           ; SOURCE LINE # 408
+0025         ?C0068:
+                                           ; SOURCE LINE # 409
+0025 7F06              MOV     R7,#06H
+0027 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 410
+002A D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 411
+002C D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 412
+002E D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 413
+0030 D2A3              SETB    pin_D1
+                                           ; SOURCE LINE # 414
+0032 D2A4              SETB    pin_D2
+                                           ; SOURCE LINE # 415
+0034 D2A5              SETB    pin_D3
+                                           ; SOURCE LINE # 416
+0036 7DC8              MOV     R5,#0C8H
+0038 7C00              MOV     R4,#00H
+003A 7F09              MOV     R7,#09H
+003C 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 417
+003F 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0042 E0                MOVX    A,@DPTR
+0043 04                INC     A
+0044 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 418
+0045 22                RET     
+                                           ; SOURCE LINE # 420
+0046         ?C0069:
+                                           ; SOURCE LINE # 421
+0046 A2A0              MOV     C,pin_HSI
+0048 B3                CPL     C
+0049 501D              JNC     ?C0070
+004B 30A11A            JNB     pin_HSO,?C0070
+                                           ; SOURCE LINE # 422
+                                           ; SOURCE LINE # 423
+004E 7F06              MOV     R7,#06H
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 30  
+
+0050 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 425
+0053 A2A2              MOV     C,pin_D0
+0055 9200        R     MOV     SYNCH_Rec_HL,C
+                                           ; SOURCE LINE # 426
+0057 C2A1              CLR     pin_HSO
+                                           ; SOURCE LINE # 428
+0059 7DC8              MOV     R5,#0C8H
+005B 7C00              MOV     R4,#00H
+005D 7F09              MOV     R7,#09H
+005F 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 429
+0062 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0065 E0                MOVX    A,@DPTR
+0066 04                INC     A
+0067 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 430
+0068         ?C0070:
+                                           ; SOURCE LINE # 432
+0068 7F09              MOV     R7,#09H
+006A 120000      E     LCALL   _Timeout
+006D 4003              JC      $ + 5H
+006F 020000      R     LJMP    ?C0083
+0072 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0075 7432              MOV     A,#032H
+0077 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 433
+0078 22                RET     
+                                           ; SOURCE LINE # 435
+0079         ?C0072:
+                                           ; SOURCE LINE # 436
+0079 30A01D            JNB     pin_HSI,?C0073
+                                           ; SOURCE LINE # 437
+                                           ; SOURCE LINE # 438
+007C 7F06              MOV     R7,#06H
+007E 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 440
+0081 A200        R     MOV     C,SYNCH_Rec_HL
+0083 9200        R     MOV     ?SYNCH_SaveNibble?BIT,C
+0085 120000      R     LCALL   SYNCH_SaveNibble
+                                           ; SOURCE LINE # 441
+0088 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 442
+008A 7DC8              MOV     R5,#0C8H
+008C 7C00              MOV     R4,#00H
+008E 7F09              MOV     R7,#09H
+0090 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 443
+0093 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0096 E0                MOVX    A,@DPTR
+0097 04                INC     A
+0098 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 444
+0099         ?C0073:
+                                           ; SOURCE LINE # 446
+0099 7F09              MOV     R7,#09H
+009B 120000      E     LCALL   _Timeout
+009E 507A              JNC     ?C0083
+00A0 900000      R     MOV     DPTR,#sSYNCH_RecStep
+00A3 7432              MOV     A,#032H
+00A5 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 447
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 31  
+
+00A6 22                RET     
+                                           ; SOURCE LINE # 450
+00A7         ?C0075:
+                                           ; SOURCE LINE # 451
+00A7 A2A0              MOV     C,pin_HSI
+00A9 B3                CPL     C
+00AA 501D              JNC     ?C0076
+00AC 30A11A            JNB     pin_HSO,?C0076
+                                           ; SOURCE LINE # 452
+                                           ; SOURCE LINE # 453
+00AF 7F06              MOV     R7,#06H
+00B1 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 454
+00B4 A2A2              MOV     C,pin_D0
+00B6 9200        R     MOV     SYNCH_Rec_HL,C
+                                           ; SOURCE LINE # 455
+00B8 C2A1              CLR     pin_HSO
+                                           ; SOURCE LINE # 457
+00BA 7DC8              MOV     R5,#0C8H
+00BC 7C00              MOV     R4,#00H
+00BE 7F09              MOV     R7,#09H
+00C0 120000      E     LCALL   _Timeout_Set
+                                           ; SOURCE LINE # 458
+00C3 900000      R     MOV     DPTR,#sSYNCH_RecStep
+00C6 E0                MOVX    A,@DPTR
+00C7 04                INC     A
+00C8 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 459
+00C9         ?C0076:
+                                           ; SOURCE LINE # 461
+00C9 7F09              MOV     R7,#09H
+00CB 120000      E     LCALL   _Timeout
+00CE 504A              JNC     ?C0083
+00D0 900000      R     MOV     DPTR,#sSYNCH_RecStep
+00D3 7432              MOV     A,#032H
+00D5 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 462
+00D6 22                RET     
+                                           ; SOURCE LINE # 464
+00D7         ?C0078:
+                                           ; SOURCE LINE # 465
+00D7 30A016            JNB     pin_HSI,?C0079
+                                           ; SOURCE LINE # 466
+                                           ; SOURCE LINE # 467
+00DA 7F06              MOV     R7,#06H
+00DC 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 469
+00DF A200        R     MOV     C,SYNCH_Rec_HL
+00E1 9200        R     MOV     ?SYNCH_SaveNibble?BIT,C
+00E3 120000      R     LCALL   SYNCH_SaveNibble
+                                           ; SOURCE LINE # 470
+00E6 120000      R     LCALL   SYNCH_NextRecByte
+                                           ; SOURCE LINE # 471
+00E9 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 473
+00EB E4                CLR     A
+00EC 900000      R     MOV     DPTR,#sSYNCH_RecStep
+00EF F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 474
+00F0         ?C0079:
+                                           ; SOURCE LINE # 476
+00F0 7F09              MOV     R7,#09H
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 32  
+
+00F2 120000      E     LCALL   _Timeout
+00F5 5023              JNC     ?C0083
+00F7 900000      R     MOV     DPTR,#sSYNCH_RecStep
+00FA 7432              MOV     A,#032H
+00FC F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 477
+00FD 22                RET     
+                                           ; SOURCE LINE # 479
+00FE         ?C0081:
+                                           ; SOURCE LINE # 480
+00FE 7F07              MOV     R7,#07H
+0100 120000      E     LCALL   _LED_Stay
+                                           ; SOURCE LINE # 481
+0103 D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 482
+0105 D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 483
+0107 D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 484
+0109 D2A3              SETB    pin_D1
+                                           ; SOURCE LINE # 485
+010B D2A4              SETB    pin_D2
+                                           ; SOURCE LINE # 486
+010D D2A5              SETB    pin_D3
+                                           ; SOURCE LINE # 487
+010F E4                CLR     A
+0110 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0113 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 488
+0114 22                RET     
+                                           ; SOURCE LINE # 490
+0115         ?C0082:
+0115 E4                CLR     A
+0116 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0119 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 491
+                                           ; SOURCE LINE # 492
+011A         ?C0083:
+011A 22                RET     
+             ; FUNCTION SYNCH_GetByte (END)
+
+             ; FUNCTION SYNCH_GetChar (BEGIN)
+                                           ; SOURCE LINE # 495
+                                           ; SOURCE LINE # 496
+                                           ; SOURCE LINE # 499
+;---- Variable 'Ch' assigned to Register 'R7' ----
+0000 E4                CLR     A
+0001 FF                MOV     R7,A
+                                           ; SOURCE LINE # 500
+0002 900000      R     MOV     DPTR,#SYNCH_BytesInRecBuf
+0005 E0                MOVX    A,@DPTR
+0006 6023              JZ      ?C0084
+                                           ; SOURCE LINE # 501
+                                           ; SOURCE LINE # 502
+0008 900000      R     MOV     DPTR,#SYNCH_RecBufIx_r
+000B E0                MOVX    A,@DPTR
+000C 75F00A            MOV     B,#0AH
+000F 84                DIV     AB
+0010 E5F0              MOV     A,B
+0012 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 503
+0013 E0                MOVX    A,@DPTR
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 33  
+
+0014 2400        R     ADD     A,#LOW SYNCH_RecBuf
+0016 F582              MOV     DPL,A
+0018 E4                CLR     A
+0019 3400        R     ADDC    A,#HIGH SYNCH_RecBuf
+001B F583              MOV     DPH,A
+001D E0                MOVX    A,@DPTR
+001E FF                MOV     R7,A
+                                           ; SOURCE LINE # 504
+001F 900000      R     MOV     DPTR,#SYNCH_RecBufIx_r
+0022 E0                MOVX    A,@DPTR
+0023 04                INC     A
+0024 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 505
+0025 900000      R     MOV     DPTR,#SYNCH_BytesInRecBuf
+0028 E0                MOVX    A,@DPTR
+0029 14                DEC     A
+002A F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 506
+002B         ?C0084:
+                                           ; SOURCE LINE # 507
+                                           ; SOURCE LINE # 508
+002B         ?C0085:
+002B 22                RET     
+             ; FUNCTION SYNCH_GetChar (END)
+
+             ; FUNCTION SYNCH_Init (BEGIN)
+                                           ; SOURCE LINE # 511
+                                           ; SOURCE LINE # 512
+                                           ; SOURCE LINE # 515
+0000 E4                CLR     A
+0001 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_w
+0004 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 516
+0005 900000      R     MOV     DPTR,#SYNCH_SrcPtrIx_r
+0008 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 517
+0009 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+000C F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 518
+000D 900000      R     MOV     DPTR,#SYNCH_SrcIndex
+0010 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 519
+0011 900000      R     MOV     DPTR,#SYNCH_BytesInSndBuf
+0014 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 521
+0015 900000      R     MOV     DPTR,#SYNCH_RecBufIx_w
+0018 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 522
+0019 900000      R     MOV     DPTR,#SYNCH_RecBufIx_r
+001C F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 523
+001D 900000      R     MOV     DPTR,#SYNCH_BytesInRecBuf
+0020 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 524
+0021 C200        R     CLR     SYNCH_Rec_HL
+                                           ; SOURCE LINE # 525
+0023 C200        R     CLR     SYNCH_RIBUF
+                                           ; SOURCE LINE # 527
+0025 900000      R     MOV     DPTR,#SYNCH_LogBufIx_w
+0028 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 528
+0029 900000      R     MOV     DPTR,#SYNCH_LogBufIx_r
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 34  
+
+002C F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 529
+002D 900000      R     MOV     DPTR,#SYNCH_ByteInLogBuf
+0030 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 530
+0031 C200        R     CLR     bSYNCH_LogBufOverflow
+                                           ; SOURCE LINE # 532
+;---- Variable 'i' assigned to Register 'R7' ----
+0033 FF                MOV     R7,A
+0034         ?C0086:
+0034 7F0A              MOV     R7,#0AH
+0036 900000      R     MOV     DPTR,#SYNCH_RecBuf
+0039 E4                CLR     A
+003A         ?C0103:
+003A F0                MOVX    @DPTR,A
+003B A3                INC     DPTR
+003C DFFC              DJNZ    R7,?C0103
+003E         ?C0087:
+                                           ; SOURCE LINE # 533
+003E E4                CLR     A
+003F FF                MOV     R7,A
+0040         ?C0089:
+0040 7F05              MOV     R7,#05H
+0042 900000      R     MOV     DPTR,#SYNCH_SrcBytes
+0045 E4                CLR     A
+0046         ?C0104:
+0046 F0                MOVX    @DPTR,A
+0047 A3                INC     DPTR
+0048 DFFC              DJNZ    R7,?C0104
+004A         ?C0090:
+                                           ; SOURCE LINE # 535
+004A D2A0              SETB    pin_HSI
+                                           ; SOURCE LINE # 536
+004C D2A1              SETB    pin_HSO
+                                           ; SOURCE LINE # 537
+004E D2A2              SETB    pin_D0
+                                           ; SOURCE LINE # 538
+0050 D2A3              SETB    pin_D1
+                                           ; SOURCE LINE # 539
+0052 D2A4              SETB    pin_D2
+                                           ; SOURCE LINE # 540
+0054 D2A5              SETB    pin_D3
+                                           ; SOURCE LINE # 542
+0056 E4                CLR     A
+0057 900000      R     MOV     DPTR,#sSYNCH_RecStep
+005A F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 543
+005B 900000      R     MOV     DPTR,#sSYNCH_SndStep
+005E F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 544
+005F 22                RET     
+             ; FUNCTION SYNCH_Init (END)
+
+             ; FUNCTION SYNCH_Proc (BEGIN)
+                                           ; SOURCE LINE # 547
+                                           ; SOURCE LINE # 548
+                                           ; SOURCE LINE # 550
+0000 900000      R     MOV     DPTR,#SYNCH_PtrInBuf
+0003 E0                MOVX    A,@DPTR
+0004 7004              JNZ     ?C0094
+0006 A3                INC     DPTR
+0007 E0                MOVX    A,@DPTR
+C51 COMPILER V6.12  SYNCHCOM                                                               10/23/2005 15:48:30 PAGE 35  
+
+0008 6008              JZ      ?C0093
+000A         ?C0094:
+000A 900000      R     MOV     DPTR,#sSYNCH_SndStep
+000D E0                MOVX    A,@DPTR
+000E 7002              JNZ     ?C0093
+                                           ; SOURCE LINE # 551
+0010 04                INC     A
+0011 F0                MOVX    @DPTR,A
+0012         ?C0093:
+                                           ; SOURCE LINE # 554
+0012 900000      R     MOV     DPTR,#sSYNCH_SndStep
+0015 E0                MOVX    A,@DPTR
+0016 FF                MOV     R7,A
+0017 7010              JNZ     ?C0095
+                                           ; SOURCE LINE # 555
+                                           ; SOURCE LINE # 556
+0019 A2A0              MOV     C,pin_HSI
+001B B3                CPL     C
+001C 500B              JNC     ?C0095
+001E 30A108            JNB     pin_HSO,?C0095
+0021 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0024 E0                MOVX    A,@DPTR
+0025 7002              JNZ     ?C0095
+0027 04                INC     A
+0028 F0                MOVX    @DPTR,A
+                                           ; SOURCE LINE # 557
+0029         ?C0095:
+                                           ; SOURCE LINE # 560
+0029 EF                MOV     A,R7
+002A 6003              JZ      ?C0097
+002C 020000      R     LJMP    SYNCH_SendByte
+002F         ?C0097:
+                                           ; SOURCE LINE # 562
+                                           ; SOURCE LINE # 563
+002F 900000      R     MOV     DPTR,#sSYNCH_RecStep
+0032 E0                MOVX    A,@DPTR
+0033 6003              JZ      ?C0100
+0035 120000      R     LCALL   SYNCH_GetByte
+                                           ; SOURCE LINE # 564
+                                           ; SOURCE LINE # 565
+0038         ?C0100:
+0038 22                RET     
+             ; FUNCTION SYNCH_Proc (END)
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1463    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    203    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      3       4
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
